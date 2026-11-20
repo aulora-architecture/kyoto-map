@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>京都 建築巡りマップ | aulora</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Leaflet CSS -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+
+  <!-- Google Fonts: Inter & Noto Sans JP -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'Noto Sans JP', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+          },
+          colors: {
+            paper: '#f7f7f4',
+            canvas: '#eeeeea',
+            ink: '#161614',
+            muted: '#6b6b66',
+            line: '#e2e2dc',
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      background-color: #f7f7f4;
+      color: #161614;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* モノクロ地図モード用フィルター（国土地理院 淡色地図に適用） */
+    .map-mono .leaflet-tile-pane {
+      filter: grayscale(100%) contrast(1.05);
+    }
+
+    /* Leafletのデフォルト帰属表記をコンパクトに調整 */
+    .leaflet-control-attribution {
+      font-size: 9px !important;
+      background: rgba(255, 255, 255, 0.78) !important;
+      padding: 1px 5px !important;
+      color: #444 !important;
+    }
+
+    /* 航空写真上でもくっきり見えるカスタム丸ピン */
+    .spot-pin {
+      width: 24px;
+      height: 24px;
+      border-radius: 9999px;
+      border: 2.5px solid #ffffff;
+      color: #ffffff;
+      font-size: 10px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+      transition: transform 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    .spot-pin.is-selected {
+      transform: scale(1.32);
+      border-width: 3px;
+      box-shadow: 0 0 0 2px #161614, 0 4px 12px rgba(0, 0, 0, 0.5);
+    }
+
+    /* 2地点ルート用 A / B マーカー */
+    .route-badge-pin {
+      width: 30px;
+      height: 30px;
+      border-radius: 9999px;
+      border: 3px solid #ffffff;
+      font-size: 13px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.55);
+    }
+
+    .route-badge-a {
+      background-color: #161614;
+      color: #ffffff;
+    }
+
+    .route-badge-b {
+      background-color: #b83b2d;
+      color: #ffffff;
+    }
+
+    /* 横スクロールバー非表示 */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+
+<body class="h-dvh w-full flex flex-col md:flex-row bg-paper text-ink antialiased">
+
+  <!-- =========================================================
+       四角い地図エリア
+       スマホ：上部（50dvh）、PC：右側（残り全幅＋余白＋枠線）
+       ========================================================= -->
+  <section
+    id="mapOuter"
+    class="order-1 md:order-2 h-[50dvh] md:h-full w-full md:flex-1 shrink-0 md:p-4 bg-canvas flex flex-col"
+  >
+    <div
+      id="mapFrame"
+      class="relative w-full h-full bg-neutral-200 border-b md:border border-[#d6d6cf] md:rounded-xl overflow-hidden md:shadow-sm"
+    >
+      <!-- Leaflet Map Container -->
+      <div id="map" class="w-full h-full z-10"></div>
+
+      <!-- 地図右下：超コンパクトなコントロール群のみ配置 -->
+      <div class="absolute bottom-6 right-2.5 z-20 flex items-end gap-1.5">
+        <!-- 全体表示ボタン -->
+        <button
+          id="btnFitBounds"
+          type="button"
+          title="表示中のピンを全体表示"
+          aria-label="表示中のピンを全体表示"
+          class="h-8 px-2.5 rounded-lg bg-white/95 backdrop-blur-sm border border-[#d6d6cf] shadow-md text-[11px] font-semibold text-ink flex items-center gap-1 hover:bg-neutral-50 active:scale-95 transition"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <span>全体</span>
+        </button>
+
+        <!-- 地図スタイル切替ボタン＆超コンパクトメニュー -->
+        <div class="relative">
+          <div
+            id="tileMenu"
+            class="hidden absolute bottom-10 right-0 w-28 bg-white/95 backdrop-blur-sm border border-[#d6d6cf] rounded-lg shadow-lg overflow-hidden py-1"
+          >
+            <button type="button" data-tile="seamlessphoto" class="tile-opt w-full text-left px-3 py-1.5 text-[11px] font-medium hover:bg-neutral-100 flex items-center justify-between">
+              <span>航空写真</span><span class="check-mark text-ink font-bold">✓</span>
+            </button>
+            <button type="button" data-tile="mono" class="tile-opt w-full text-left px-3 py-1.5 text-[11px] font-medium hover:bg-neutral-100 flex items-center justify-between">
+              <span>モノクロ</span><span class="check-mark hidden text-ink font-bold">✓</span>
+            </button>
+            <button type="button" data-tile="pale" class="tile-opt w-full text-left px-3 py-1.5 text-[11px] font-medium hover:bg-neutral-100 flex items-center justify-between">
+              <span>淡色地図</span><span class="check-mark hidden text-ink font-bold">✓</span>
+            </button>
+            <button type="button" data-tile="std" class="tile-opt w-full text-left px-3 py-1.5 text-[11px] font-medium hover:bg-neutral-100 flex items-center justify-between">
+              <span>標準地図</span><span class="check-mark hidden text-ink font-bold">✓</span>
+            </button>
+          </div>
+
+          <button
+            id="btnTileMenu"
+            type="button"
+            class="h-8 px-2.5 rounded-lg bg-white/95 backdrop-blur-sm border border-[#d6d6cf] shadow-md text-[11px] font-semibold text-ink flex items-center gap-1 hover:bg-neutral-50 active:scale-95 transition"
+          >
+            <span id="currentTileLabel">航空写真</span>
+            <svg class="w-3 h-3 text-muted" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================
+       操作・情報パネル
+       スマホ：下部（残り50dvh）、PC：左側（幅376px）
+       ========================================================= -->
+  <aside
+    id="controlPanel"
+    class="order-2 md:order-1 flex-1 md:flex-none min-h-0 md:h-full w-full md:w-[376px] md:shrink-0 bg-white md:border-r border-line flex flex-col"
+  >
+    <!-- ヘッダー（PCはしっかり、スマホは超コンパクト） -->
+    <header class="px-3.5 py-2 md:px-4 md:py-3 border-b border-line flex items-center justify-between shrink-0 bg-white">
+      <div class="flex items-baseline gap-2 min-w-0">
+        <h1 class="text-sm md:text-base font-bold tracking-tight text-ink truncate">
+          京都 建築巡りマップ
+        </h1>
+        <span class="text-[11px] font-medium text-muted tracking-wider shrink-0">
+          | aulora
+        </span>
+      </div>
+      <span id="headerCountBadge" class="text-[11px] font-medium text-muted bg-paper border border-line px-2 py-0.5 rounded-full shrink-0">
+        92件
+      </span>
+    </header>
+
+    <!-- 3タブバー：【探す】【詳細】【2地点ルート】 -->
+    <nav class="grid grid-cols-3 border-b border-line bg-paper/60 shrink-0" role="tablist">
+      <button
+        id="tabBtnSearch"
+        type="button"
+        role="tab"
+        data-tab="search"
+        class="tab-btn py-2.5 text-xs font-bold border-b-2 border-ink text-ink bg-white transition"
+      >
+        探す
+      </button>
+      <button
+        id="tabBtnDetail"
+        type="button"
+        role="tab"
+        data-tab="detail"
+        class="tab-btn py-2.5 text-xs font-medium border-b-2 border-transparent text-muted hover:text-ink transition"
+      >
+        詳細
+      </button>
+      <button
+        id="tabBtnRoute"
+        type="button"
+        role="tab"
+        data-tab="route"
+        class="tab-btn py-2.5 text-xs font-medium border-b-2 border-transparent text-muted hover:text-ink transition flex items-center justify-center gap-1"
+      >
+        <span>2地点ルート</span>
+        <span id="routeActiveDot" class="hidden w-1.5 h-1.5 rounded-full bg-[#b83b2d]"></span>
+      </button>
+    </nav>
+
+    <!-- タブ中身（縦スクロール領域） -->
+    <div class="flex-1 min-h-0 overflow-y-auto">
+
+      <!-- 1. 【探す】タブ -->
+      <div id="tabPanelSearch" class="p-3.5 md:p-4 space-y-3">
+        <!-- キーワード検索 -->
+        <div class="relative flex items-center">
+          <svg class="w-4 h-4 text-muted absolute left-3 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="7" />
+            <path d="M21 21l-4.35-4.35" stroke-linecap="round" />
+          </svg>
+          <input
+            id="searchInput"
+            type="text"
+            placeholder="施設名・設計者・駅・メモで検索..."
+            class="w-full pl-9 pr-8 py-2 text-xs md:text-sm bg-paper border border-line rounded-lg text-ink placeholder:text-muted/70 focus:outline-none focus:border-ink focus:bg-white transition"
+          />
+          <button
+            id="clearSearchBtn"
+            type="button"
+            class="hidden absolute right-2 p-1 text-muted hover:text-ink"
+            aria-label="検索をクリア"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- エリア絞り込みチップ -->
+        <div id="areaChips" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+          <!-- JSで生成 -->
+        </div>
+
+        <!-- 件数＆リセット -->
+        <div class="flex items-center justify-between text-[11px] text-muted pt-0.5">
+          <span id="searchCountText">全92スポットを表示中</span>
+          <button
+            id="resetFilterBtn"
+            type="button"
+            class="hidden text-ink underline underline-offset-2 font-medium hover:opacity-75"
+          >
+            絞り込み解除
+          </button>
+        </div>
+
+        <!-- スポット一覧リスト -->
+        <div id="spotList" class="space-y-2 pb-4">
+          <!-- JSで生成 -->
+        </div>
+      </div>
+
+      <!-- 2. 【詳細】タブ -->
+      <div id="tabPanelDetail" class="hidden p-3.5 md:p-4">
+        <!-- 未選択時 -->
+        <div id="detailEmpty" class="py-10 px-4 text-center space-y-2">
+          <p class="text-sm font-semibold text-ink">スポットが未選択です</p>
+          <p class="text-xs text-muted leading-relaxed">
+            地図上のピンをタップするか、「探す」タブの一覧から建築を選ぶと詳細・解説記事・経路ボタンが表示されます。
+          </p>
+        </div>
+
+        <!-- 選択中の詳細カード -->
+        <div id="detailCard" class="hidden space-y-3.5 pb-4">
+          <!-- エリアバッジ＆前後移動 -->
+          <div class="flex items-center justify-between gap-2">
+            <span
+              id="detailAreaBadge"
+              class="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full text-white"
+            ></span>
+            <div class="flex items-center gap-1">
+              <button
+                id="btnPrevSpot"
+                type="button"
+                class="px-2 py-1 text-[11px] font-medium border border-line rounded-md hover:bg-paper active:scale-95 transition"
+              >
+                ← 前
+              </button>
+              <button
+                id="btnNextSpot"
+                type="button"
+                class="px-2 py-1 text-[11px] font-medium border border-line rounded-md hover:bg-paper active:scale-95 transition"
+              >
+                次 →
+              </button>
+            </div>
+          </div>
+
+          <!-- 施設名 -->
+          <h2 id="detailName" class="text-base md:text-lg font-bold leading-snug text-ink"></h2>
+
+          <!-- 基本情報ボックス -->
+          <div class="bg-paper border border-line rounded-xl p-3 space-y-2 text-xs">
+            <div class="flex gap-2">
+              <span class="text-muted shrink-0 w-16">設計・年代</span>
+              <span id="detailArchitect" class="font-medium text-ink"></span>
+            </div>
+            <div class="flex gap-2">
+              <span class="text-muted shrink-0 w-16">最寄り駅</span>
+              <span id="detailStation" class="text-ink"></span>
+            </div>
+          </div>
+
+          <!-- ひとことメモ -->
+          <div class="space-y-1">
+            <div class="text-[11px] font-semibold text-muted">ひとことメモ</div>
+            <p id="detailMemo" class="text-xs md:text-[13px] leading-relaxed text-ink/90"></p>
+          </div>
+
+          <!-- 主要アクションボタン群 -->
+          <div class="space-y-2 pt-1">
+            <a
+              id="detailNoteBtn"
+              href="#"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg bg-ink text-white text-xs font-semibold hover:bg-neutral-800 active:scale-[0.99] transition"
+            >
+              <span id="detailNoteBtnText">解説記事を読む</span>
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </a>
+
+            <a
+              id="detailTransitBtn"
+              href="#"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg bg-white border border-ink text-ink text-xs font-semibold hover:bg-paper active:scale-[0.99] transition"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M8 6v6m8-6v6M5 12h14M7 18l-2 2m12-2l2 2M6 3h12a2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2z" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <span>Googleマップで経路（電車・バス）</span>
+            </a>
+
+            <!-- 出発地A / 目的地B に設定 -->
+            <div class="grid grid-cols-2 gap-2">
+              <button
+                id="btnSetA"
+                type="button"
+                class="py-2 px-2.5 rounded-lg bg-paper border border-line text-[11px] font-semibold text-ink hover:border-ink transition active:scale-95"
+              >
+                出発地 A に設定
+              </button>
+              <button
+                id="btnSetB"
+                type="button"
+                class="py-2 px-2.5 rounded-lg bg-paper border border-line text-[11px] font-semibold text-ink hover:border-ink transition active:scale-95"
+              >
+                目的地 B に設定
+              </button>
+            </div>
+          </div>
+
+          <!-- 同じ設計者の建築（竣工年順） -->
+          <div id="sameArchitectSection" class="hidden pt-3 border-t border-line space-y-2.5">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-bold text-ink">同じ設計者の建築</h3>
+              <span class="text-[10px] text-muted">竣工年順</span>
+            </div>
+            <div id="sameArchitectGroups" class="space-y-3">
+              <!-- JSで生成 -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. 【2地点ルート】タブ -->
+      <div id="tabPanelRoute" class="hidden p-3.5 md:p-4 space-y-3.5 pb-6">
+        <div class="flex items-center justify-between">
+          <p class="text-xs text-muted">2つの建築を選んで距離と目安時間を計算</p>
+          <div class="flex items-center gap-1.5">
+            <button
+              id="btnSwapAB"
+              type="button"
+              class="px-2.5 py-1 text-[11px] font-semibold rounded-md border border-line bg-paper hover:border-ink transition active:scale-95"
+            >
+              A⇔B
+            </button>
+            <button
+              id="btnClearRoute"
+              type="button"
+              class="px-2.5 py-1 text-[11px] font-medium rounded-md border border-line text-muted hover:text-ink hover:border-ink transition active:scale-95"
+            >
+              クリア
+            </button>
+          </div>
+        </div>
+
+        <!-- セレクトボックス A / B -->
+        <div class="space-y-2.5">
+          <div class="space-y-1">
+            <label for="selectOriginA" class="flex items-center gap-1.5 text-[11px] font-bold text-ink">
+              <span class="w-4 h-4 rounded-full bg-[#161614] text-white inline-flex items-center justify-center text-[10px]">A</span>
+              <span>出発地</span>
+            </label>
+            <select
+              id="selectOriginA"
+              class="w-full py-2 px-2.5 text-xs bg-paper border border-line rounded-lg text-ink focus:outline-none focus:border-ink focus:bg-white"
+            ></select>
+          </div>
+
+          <div class="space-y-1">
+            <label for="selectDestB" class="flex items-center gap-1.5 text-[11px] font-bold text-ink">
+              <span class="w-4 h-4 rounded-full bg-[#b83b2d] text-white inline-flex items-center justify-center text-[10px]">B</span>
+              <span>目的地</span>
+            </label>
+            <select
+              id="selectDestB"
+              class="w-full py-2 px-2.5 text-xs bg-paper border border-line rounded-lg text-ink focus:outline-none focus:border-ink focus:bg-white"
+            ></select>
+          </div>
+        </div>
+
+        <!-- 計算結果ボックス -->
+        <div id="routeResultBox" class="hidden space-y-3 pt-1">
+          <div class="bg-paper border border-line rounded-xl p-3 space-y-2.5">
+            <div class="flex items-baseline justify-between border-b border-line pb-2">
+              <span class="text-[11px] text-muted">直線 / 道のり目安</span>
+              <span id="routeDistText" class="text-sm font-bold text-ink"></span>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-center">
+              <div class="bg-white border border-line rounded-lg py-2 px-1">
+                <div class="text-[10px] text-muted">徒歩目安</div>
+                <div id="routeWalkText" class="text-xs font-bold text-ink mt-0.5"></div>
+              </div>
+              <div class="bg-white border border-line rounded-lg py-2 px-1">
+                <div class="text-[10px] text-muted">電車・バス</div>
+                <div id="routeTransitText" class="text-xs font-bold text-ink mt-0.5"></div>
+              </div>
+              <div class="bg-white border border-line rounded-lg py-2 px-1">
+                <div class="text-[10px] text-muted">タクシー</div>
+                <div id="routeTaxiText" class="text-xs font-bold text-ink mt-0.5"></div>
+              </div>
+            </div>
+          </div>
+
+          <a
+            id="btnGoogleRouteAB"
+            href="#"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg bg-ink text-white text-xs font-semibold hover:bg-neutral-800 active:scale-[0.99] transition"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M8 6v6m8-6v6M5 12h14M7 18l-2 2m12-2l2 2M6 3h12a2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2z" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <span>A → B の電車・バス経路をGoogleマップで検索</span>
+          </a>
+        </div>
+
+        <!-- 未完了メッセージ -->
+        <div id="routeHintBox" class="bg-paper border border-dashed border-line rounded-xl p-4 text-center text-xs text-muted leading-relaxed">
+          出発地(A)と目的地(B)をそれぞれ選ぶと、地図上にルート線を引き、距離と移動時間の目安を表示します。
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- トースト通知（alert代替） -->
+  <div
+    id="toast"
+    class="pointer-events-none fixed top-3 left-1/2 -translate-x-1/2 z-50 bg-ink/90 text-white text-xs font-medium px-3.5 py-1.5 rounded-full shadow-lg opacity-0 transition-opacity duration-200 whitespace-nowrap"
+  ></div>
+
+  <!-- Leaflet JS -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+
+  <script>
+    /**
+     * エリア定義（京都編1〜6：落ち着いた建築アーカイブ配色＋note記事URL）
+     */
+    const AREAS = {
+      1: { key: 1, short: '京都編1', label: '京都編1（洛北）', color: '#2f4858', url: 'https://note.com/aulora/n/nd23fc113ecee' },
+      2: { key: 2, short: '京都編2', label: '京都編2（北白川〜岡崎）', color: '#3b6978', url: 'https://note.com/aulora/n/nd24a98eb992e' },
+      3: { key: 3, short: '京都編3', label: '京都編3（蹴上・南禅寺〜山科）', color: '#3d6b52', url: 'https://note.com/aulora/n/n79638e1bf4e9' },
+      4: { key: 4, short: '京都編4', label: '京都編4（東山）', color: '#8c4a3c', url: 'https://note.com/aulora/n/n4816c5d0b48a' },
+      5: { key: 5, short: '京都編5', label: '京都編5（中京区）', color: '#6d597a', url: 'https://note.com/aulora/n/n70f60b785daf' },
+      6: { key: 6, short: '京都編6', label: '京都編6（洛外〜洛中）', color: '#8a6d3b', url: 'https://note.com/aulora/n/n5952897791f7' },
+    };
+
+    /**
+     * 国土地理院公式タイル定義（ブロック・APIキーエラーなし）
+     */
+    const GSI_TILES = {
+      seamlessphoto: {
+        label: '航空写真',
+        url: 'https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg',
+        maxZoom: 18,
+        mono: false,
+      },
+      mono: {
+        label: 'モノクロ',
+        url: 'https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',
+        maxZoom: 18,
+        mono: true,
+      },
+      pale: {
+        label: '淡色地図',
+        url: 'https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',
+        maxZoom: 18,
+        mono: false,
+      },
+      std: {
+        label: '標準地図',
+        url: 'https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',
+        maxZoom: 18,
+        mono: false,
+      },
+    };
+
+    /**
+     * 京都編1〜6 全92スポットデータ
+     */
+    const SPOTS = [
+      // ==================== 京都編1（洛北）15件 ====================
+      { id: 1, area: 1, name: '鈍考 donkou / 喫茶 芳 Kissa Fang', arch: '堀部安嗣 (2023)', architects: ['堀部安嗣'], year: 2023, station: '叡山電鉄 三宅八幡駅', memo: '深い軒がつくる影と、木製サッシを全開にして森を取り込むプロポーションが美しい空間。', lat: 35.06047, lng: 135.80162 },
+      { id: 2, area: 1, name: '瑠璃光院', arch: '大正末期〜昭和初期', architects: [], year: 1925, station: '叡山電鉄 八瀬比叡山口駅', memo: '机の天板に庭が映り込む数寄屋造りの寺院。2階の窓枠と柱・鴨居の比率が景色を絵画のように切り取る。', lat: 35.06495, lng: 135.82218 },
+      { id: 3, area: 1, name: '国立京都国際会館', arch: '大谷幸夫 (1966)', architects: ['大谷幸夫'], year: 1966, station: '地下鉄烏丸線 国際会館駅', memo: '山並みに合わせた斜めの造形と巨大なコンクリートが圧倒的な存在感を放つ現代の神殿。', lat: 35.07065, lng: 135.78522 },
+      { id: 4, area: 1, name: 'ザ・プリンス 京都宝ヶ池', arch: '村野藤吾 (1986)', architects: ['村野藤吾'], year: 1986, station: '地下鉄烏丸線 国際会館駅', memo: '円形を基調とした柔らかな曲線と手触りのある天井仕上げが光を拡散させる、村野藤吾晩年の傑作ホテル。', lat: 35.06635, lng: 135.78671 },
+      { id: 5, area: 1, name: '圓通寺', arch: '江戸時代初期', architects: [], year: 1678, station: '叡山電鉄 京都精華大前駅 / 地下鉄 北山駅からバス', memo: '生垣を額縁に見立て、40本以上の杉の幹を垂直の目盛りにして比叡山を取り込む借景庭園の最高峰。', lat: 35.05952, lng: 135.77451 },
+      { id: 6, area: 1, name: '修学院離宮', arch: '(1659)', architects: [], year: 1659, station: '叡山電鉄 修学院駅', memo: '無限に広がる借景の中に建築をそっと置く広大な離宮。浴龍池を巡る視界の絞りと開放の演出が見事。', lat: 35.05398, lng: 135.80572 },
+      { id: 7, area: 1, name: '無光虹（旧修学院の家Ⅱ）', arch: '高松伸 (1985)', architects: ['高松伸'], year: 1985, station: '叡山電鉄 宝ヶ池駅 / 修学院駅', memo: '高松伸氏の初期住宅「修学院の家Ⅱ」を活かしたアートカフェ・ギャラリー。80年代の尖った造形と今の落ち着きの対比。', lat: 35.05182, lng: 135.79984 },
+      { id: 8, area: 1, name: '詩仙堂', arch: '(1641)', architects: ['石川丈山'], year: 1641, station: '叡山電鉄 一乗寺駅', memo: '余計なものを削ぎ落とした山荘跡。低い目線の縁側からサツキの刈り込み越しに庭の奥行きを味わう引き算の美学。', lat: 35.04328, lng: 135.79764 },
+      { id: 9, area: 1, name: '下鴨神社（賀茂御祖神社）', arch: '古代〜 / 現本殿 (1863)', architects: [], year: 1863, station: '京阪・叡山電鉄 出町柳駅', memo: '糺の森の長いアプローチがもたらす神聖な空気感と、朱塗りの社殿と原生林の深い緑の対比。', lat: 35.03915, lng: 135.77312 },
+      { id: 10, area: 1, name: '旧三井家下鴨別邸', arch: '(1925)', architects: [], year: 1925, station: '京阪・叡山電鉄 出町柳駅', memo: '3階建ての望楼を持つ豪商の旧別邸。庭園と一体化した開放的な座敷と、上品で贅を尽くした近代和風のディテール。', lat: 35.03522, lng: 135.77468 },
+      { id: 11, area: 1, name: '京都府立陶板名画の庭', arch: '安藤忠雄 (1994)', architects: ['安藤忠雄'], year: 1994, station: '地下鉄烏丸線 北山駅', memo: 'コンクリートの壁と水、交差するスロープが立体的な回遊性を生む屋外絵画庭園。', lat: 35.04775, lng: 135.76465 },
+      { id: 12, area: 1, name: '京都府立植物園（観覧温室）', arch: '(1924) / 温室 (1992)', architects: [], year: 1992, station: '地下鉄烏丸線 北山駅', memo: '日本最古の公立総合植物園。池に浮かぶような幾何学デザインの巨大な観覧温室が見どころ。', lat: 35.04964, lng: 135.76281 },
+      { id: 13, area: 1, name: '京都工芸繊維大学 美術工芸資料館', arch: '(1981)', architects: [], year: 1981, station: '地下鉄烏丸線 松ヶ崎駅', memo: '村野藤吾の膨大な設計図面などを収蔵。建築関連のマニアックで質の高い企画展に合わせて訪れたい聖地。', lat: 35.04954, lng: 135.78116 },
+      { id: 14, area: 1, name: '北村美術館・四君子苑', arch: '吉田五十八 (1963) / 北村捨次郎 (1944)', architects: ['吉田五十八', '北村捨次郎'], year: 1963, station: '京阪 出町柳駅', memo: '近代数寄屋の巨匠・吉田五十八がすっきり見せるために研ぎ澄ませた旧邸宅。※春・秋のみ期間限定公開', lat: 35.03582, lng: 135.75892 },
+      { id: 15, area: 1, name: '三千院', arch: '延暦年間 (782〜806)', architects: [], year: 794, station: '京都バス 大原バスターミナル', memo: '苔庭「有清園」に佇む往生極楽院。国宝・阿弥陀三尊像を納めるための船底天井と杉木立の光が調和する。', lat: 35.12142, lng: 135.83421 },
+
+      // ==================== 京都編2（北白川〜岡崎）10件 ====================
+      { id: 16, area: 2, name: '京都芸術大学（至誠館など）', arch: '隈研吾 ほか (2010)', architects: ['隈研吾'], year: 2010, station: '叡山電鉄 茶山・京都芸術大学駅', memo: '山の斜面をそのままキャンパスにした起伏ある構成。山へ向かって登る巨大な階段が地形を動線に組み込む。', lat: 35.03535, lng: 135.79245 },
+      { id: 17, area: 2, name: '大文字山（火床）', arch: '自然・景観スポット', architects: [], year: 9999, station: '銀閣寺裏手から徒歩約30〜40分', memo: '碁盤の目の街並みと周囲の山々を一望し、京都という盆地都市の骨格を肌で理解できる場所。', lat: 35.02985, lng: 135.80542 },
+      { id: 18, area: 2, name: '銀閣寺（慈照寺）', arch: '足利義政 (1490)', architects: ['足利義政'], year: 1490, station: '市バス 銀閣寺道 / 銀閣寺前', memo: '華美な装飾を削ぎ落とした東山文化の最高峰。銀沙灘と向月台が月明かりを反射する光の装置としても興味深い。', lat: 35.02698, lng: 135.79825 },
+      { id: 19, area: 2, name: '法然院', arch: '(1680)', architects: [], year: 1680, station: '市バス 南田町 / 浄土寺', memo: '苔むした茅葺の山門と白砂壇が結界をつくる名刹。建築が自己主張せず、ただ環境を受け止める器に徹している。', lat: 35.03152, lng: 135.79665 },
+      { id: 20, area: 2, name: '茂庵（もあん）', arch: '谷川茂次郎 (1920年代)', architects: ['谷川茂次郎'], year: 1924, station: '市バス 銀閣寺道 / 浄土寺から吉田山山頂へ', memo: '吉田山の山頂に建つ大正時代の茶室群を活かした木造カフェ。四方の木枠窓が京都市街と森を切り取る市中の山居。', lat: 35.02795, lng: 135.78685 },
+      { id: 21, area: 2, name: '京都市京セラ美術館', arch: '前田健二郎 (1933) / 青木淳・西澤徹夫 (2020)', architects: ['前田健二郎', '青木淳', '西澤徹夫'], year: 2020, station: '地下鉄東西線 東山駅', memo: '歴史的建築の足元を掘り下げガラス・リボンを挿入。街へ開き、通り抜ける軸線を生んだリノベーションの傑作。', lat: 35.01382, lng: 135.78348 },
+      { id: 22, area: 2, name: '京都国立近代美術館', arch: '槇文彦 (1986)', architects: ['槇文彦'], year: 1986, station: '地下鉄東西線 東山駅', memo: 'シンメトリーでグリッド状に整理された理知的なファサードと、柔らかな自然光が入る端正なモダニズムの教科書。', lat: 35.01564, lng: 135.78042 },
+      { id: 23, area: 2, name: '細見美術館', arch: '大江匡 (1998)', architects: ['大江匡'], year: 1998, station: '地下鉄東西線 東山駅', memo: '高さ制限の中でボリュームの大半を地下に埋め、中央の吹き抜け中庭から全フロアに光と風を届ける路地的な空間。', lat: 35.01578, lng: 135.78385 },
+      { id: 24, area: 2, name: 'ロームシアター京都（旧京都会館）', arch: '前川國男 (1960) / 香山壽夫建築研究所 (2016)', architects: ['前川國男', '香山壽夫建築研究所'], year: 2016, station: '地下鉄東西線 東山駅', memo: '深く水平に伸びる大庇とピロティが街の広場として機能。前川建築の力強さと人間への優しさが息づく。', lat: 35.01245, lng: 135.78085 },
+      { id: 25, area: 2, name: '平安神宮', arch: '伊東忠太・木子清敬・武田五一 ほか (1895)', architects: ['伊東忠太', '木子清敬', '武田五一'], year: 1895, station: '地下鉄東西線 東山駅', memo: '平安京の朝堂院を約8分の5の規模で再現。岡崎エリアの都市軸を決定づける規格外のシンメトリー空間。', lat: 35.01852, lng: 135.78258 },
+
+      // ==================== 京都編3（蹴上・南禅寺〜山科）12件 ====================
+      { id: 26, area: 3, name: '南禅寺', arch: '(1291) / 現三門 (1628)', architects: [], year: 1628, station: '地下鉄東西線 蹴上駅 徒歩約10分', memo: '京都五山の別格。極太の円柱と複雑な組物で巨大空間を成立させる三門の圧倒的なスケールと技術力。', lat: 35.01125, lng: 135.79385 },
+      { id: 27, area: 3, name: '南禅寺 水路閣', arch: '田辺朔郎 (1888)', architects: ['田辺朔郎'], year: 1888, station: '地下鉄東西線 蹴上駅 徒歩約10分', memo: '琵琶湖疏水を通すレンガ造りのアーチ橋。異物だった近代インフラが時間を味方につけ京都の風景へ定着した例。', lat: 35.01168, lng: 135.79458 },
+      { id: 28, area: 3, name: '蹴上発電所導水管', arch: '田辺朔郎 ほか (1891)', architects: ['田辺朔郎'], year: 1891, station: '地下鉄東西線 蹴上駅 徒歩約5分', memo: '蹴上の落差を利用した日本初の事業用水力発電の鉄管。地形のエネルギーを力に変える近代インフラのダイナミズム。', lat: 35.01025, lng: 135.78852 },
+      { id: 29, area: 3, name: '無鄰菴（むりんあん）', arch: '七代目小川治兵衛 (1896)', architects: ['七代目小川治兵衛'], year: 1896, station: '地下鉄東西線 蹴上駅 徒歩約7分', memo: '山縣有朋の別荘。東山を借景に琵琶湖疏水の浅い流れと明るい芝生を取り込んだ近代日本庭園の傑作。', lat: 35.01195, lng: 135.78895 },
+      { id: 30, area: 3, name: '流響院（りゅうきょういん）', arch: '七代目小川治兵衛 (明治時代)', architects: ['七代目小川治兵衛'], year: 1900, station: '地下鉄東西線 蹴上駅 徒歩約10分', memo: '疏水の「水の響き」が主役の南禅寺界隈別荘群の名園。自然の渓流を切り取ったような流れと手入れが圧巻。※要確認・撮影禁止', lat: 35.01268, lng: 135.79182 },
+      { id: 31, area: 3, name: '對龍山荘（たいりゅうさんそう）', arch: '七代目小川治兵衛 (1901頃)', architects: ['七代目小川治兵衛'], year: 1901, station: '地下鉄東西線 蹴上駅 徒歩約10分', memo: '琵琶湖疏水の水を豪快に引き込んだ「水の庭」と数寄屋建築が一体化。水の音や湿り気まで設計された空間。', lat: 35.01242, lng: 135.79295 },
+      { id: 32, area: 3, name: '怡園（旧細川家別邸）', arch: '七代目小川治兵衛 (1893頃)', architects: ['七代目小川治兵衛'], year: 1893, station: '地下鉄東西線 蹴上駅 徒歩約10分', memo: '現在は非公開の旧細川家別邸。通りに面した門構えや土塀だけでも界隈特有の格式と名園の気配が伝わる。', lat: 35.01318, lng: 135.79075 },
+      { id: 33, area: 3, name: 'ブルーボトルコーヒー 京都カフェ', arch: '長坂常 / スキーマ建築計画 (2018)', architects: ['長坂常'], year: 2018, station: '地下鉄東西線 蹴上駅 徒歩約7分', memo: '築100年超の二軒長屋の京町家をリノベーション。剥き出しの木造骨組みと大きなガラス、砂利敷きの床が内外を曖昧にする。', lat: 35.01148, lng: 135.78695 },
+      { id: 34, area: 3, name: '泉屋博古館（せんおくはくこかん）', arch: '日建設計 (1970 / 新館2002)', architects: ['日建設計'], year: 2002, station: '市バス 東天王町 徒歩約5分 / 蹴上駅 徒歩約15分', memo: '鹿ヶ谷に佇む住友家の美術館。中庭を囲む落ち着いた回廊と質の高い素材、端正なディテールが光るモダニズム建築。', lat: 35.02185, lng: 135.79315 },
+      { id: 35, area: 3, name: '日向大神宮（ひむかいだいじんぐう）', arch: '伝・第23代顕宗天皇時代', architects: [], year: 485, station: '地下鉄東西線 蹴上駅 徒歩約15分', memo: '「京の伊勢」と呼ばれる神社。装飾を廃した神明造の原始的な木造建築と、東山の地形が一体化した空間の純度。', lat: 35.00442, lng: 135.80452 },
+      { id: 36, area: 3, name: 'ヴィラ九条山', arch: '加藤邦男 (1992)', architects: ['加藤邦男'], year: 1992, station: '地下鉄東西線 蹴上駅 徒歩約15分', memo: 'フランス政府所有のアーティスト・イン・レジデンス。東山の山腹に突き出す白い抽象的造形と京都盆地の眺望。', lat: 35.00615, lng: 135.80325 },
+      { id: 37, area: 3, name: '旧栗原邸（旧鶴巻邸）', arch: '本野精吾 (1929)', architects: ['本野精吾'], year: 1929, station: '地下鉄東西線 御陵駅 徒歩約10分', memo: '特殊コンクリートブロック構法によるモダニズム黎明期の貴重な遺構。鬱蒼とした緑と馴染む経年美化が印象的。', lat: 34.99685, lng: 135.80385 },
+
+      // ==================== 京都編4（東山）18件 ====================
+      { id: 38, area: 4, name: 'ねじりまんぽ / 蹴上インクライン / 蹴上疏水公園', arch: '田辺朔郎 (1890)', architects: ['田辺朔郎'], year: 1890, station: '地下鉄東西線 蹴上駅 徒歩約1分', memo: '斜めに積まれた煉瓦トンネル「ねじりまんぽ」やインクラインなど、琵琶湖疏水の力強い近代インフラ群。', lat: 35.00912, lng: 135.78965 },
+      { id: 39, area: 4, name: 'ウェスティン都ホテル京都 数寄屋風別館 佳水園', arch: '村野藤吾 (1960) / 改修：NAP ほか', architects: ['村野藤吾', 'NAP'], year: 1960, station: '地下鉄東西線 蹴上駅 徒歩約2分', memo: '傾斜地を生かして雁行配置された数寄屋建築の傑作。極限まで薄く軽やかな銅板葺きのむくり屋根が官能的。', lat: 35.00865, lng: 135.78685 },
+      { id: 40, area: 4, name: 'ダーワ・悠洛 京都', arch: '日建設計 / 橋本夕紀夫 (2019)', architects: ['日建設計', '橋本夕紀夫'], year: 2019, station: '地下鉄東西線 三条京阪駅 徒歩約2分', memo: '三条大橋のたもとに建つホテル。地下へ続く吹き抜けの竹林インドアガーデンなど大正ロマンを演出。', lat: 35.00868, lng: 135.77415 },
+      { id: 41, area: 4, name: 'HiTOHi（com-ion）', arch: 'DAY .inc (2025)', architects: ['DAY .inc'], year: 2025, station: '地下鉄東西線 東山駅 徒歩約5分', memo: '白川近くの町家を改装したオールデイダイニング。古い木造骨格や土壁の質感を丁寧に残した小規模リノベーションの好例。', lat: 35.00942, lng: 135.77892 },
+      { id: 42, area: 4, name: 'Cafe Loto Kyoto', arch: '堀部安嗣 (2023)', architects: ['堀部安嗣'], year: 2023, station: '地下鉄東西線 三条京阪駅 徒歩約3分', memo: '三条の細い路地に溶け込む極小スケールのコーヒースタンド。無駄を削ぎ落としたディテールと親密な包容力。', lat: 35.00825, lng: 135.77595 },
+      { id: 43, area: 4, name: 'ZENBI -鍵善良房- KAGIZEN ART MUSEUM', arch: '辻村久信 (2021)', architects: ['辻村久信'], year: 2021, station: '京阪本線 祇園四条駅 徒歩約3分', memo: '祇園の老舗和菓子店の私設美術館。町並みに配慮した外観と、黒漆や土壁をモダンに再解釈した展示空間。', lat: 35.00338, lng: 135.77512 },
+      { id: 44, area: 4, name: 'サウナ＆カプセルホテル ルーマプラザ', arch: '(2023)', architects: [], year: 2023, station: '京阪本線 祇園四条駅 徒歩約3分', memo: '過密な祇園の中心で空へ視線が抜ける開放的な屋上外気浴スペースを実現した、都市型サウナ施設の成功例。※男性専用', lat: 35.00375, lng: 135.77465 },
+      { id: 45, area: 4, name: 'Hotel 侑楽 京八坂', arch: '石井建築設計事務所 (2022)', architects: ['石井建築設計事務所'], year: 2022, station: '京阪本線 祇園四条駅 徒歩約15分', memo: '八坂神社近くの高台にあるスモールラグジュアリーホテル。伝統素材の扱い方とコスト・デザインのバランスを考えさせられる空間。', lat: 35.00182, lng: 135.78124 },
+      { id: 46, area: 4, name: 'SOWAKA（そわか）', arch: '魚谷繁礼 (2018)', architects: ['魚谷繁礼'], year: 2018, station: '京阪本線 祇園四条駅 徒歩約10分', memo: '元老舗料亭の数寄屋造りをリノベーションしたホテル。100年前の数寄屋を活かした既存中庭側の改修部が美しい。', lat: 35.00145, lng: 135.77825 },
+      { id: 47, area: 4, name: 'KYOTO BISTRO（Park Hyatt Kyoto）', arch: '竹中工務店 / トニーチー・スタジオ (2019)', architects: ['竹中工務店', 'トニーチー・スタジオ'], year: 2019, station: '京阪 祇園四条駅 徒歩約15分 / 市バス 東山安井 徒歩約6分', memo: '二寧坂の景観条例を守った瓦屋根と木格子の外観と、洗練されたモダンな内部。ランチとアップルパイが絶品。', lat: 34.99935, lng: 135.78042 },
+      { id: 48, area: 4, name: '建仁寺 両足院', arch: '鎌倉時代', architects: [], year: 1313, station: '京阪本線 祇園四条駅 徒歩約7分', memo: '京都最古の禅寺・建仁寺の塔頭。厳格な方丈と枯山水庭園が一体となった空間。企画展や特別拝観も魅力。', lat: 35.00192, lng: 135.77458 },
+      { id: 49, area: 4, name: '清水寺', arch: '本堂 (1633)', architects: [], year: 1633, station: '京阪 清水五条駅 徒歩約25分 / 市バス 清水道 徒歩約10分', memo: '崖からせり出す懸造の本堂。釘を使わず巨大なケヤキの柱を貫で連結し、急峻な地形を構造のアイデアで解決した傑作。', lat: 34.99485, lng: 135.78505 },
+      { id: 50, area: 4, name: '産寧坂（三年坂）', arch: '伝統的建造物群保存地区', architects: [], year: 1800, station: '京阪 清水五条駅 徒歩約20分 / 市バス 清水道 徒歩約10分', memo: '斜面に石段と町家が連続する都市空間。高さ・屋根勾配・軒の出などの統一基準が時間をかけてつくる群の景観。', lat: 34.99652, lng: 135.78135 },
+      { id: 51, area: 4, name: 'EMBA KYOTO GRILL / 積翠園（Four Seasons Hotel Kyoto）', arch: '久米設計 (2016)', architects: ['久米設計'], year: 2016, station: '京阪 七条駅 徒歩約12分 / 市バス 東山七条 徒歩約3分', memo: '約800年の歴史を持つ名庭・積翠園を囲むホテル内レストラン。歴史的庭園と巨大建築のスケール感の対比を考えさせられる。', lat: 34.99125, lng: 135.77765 },
+      { id: 52, area: 4, name: '京都国立博物館 平成知新館', arch: '谷口吉生 (2014)', architects: ['谷口吉生'], year: 2014, station: '京阪 七条駅 徒歩約7分 / 市バス 博物館三十三間堂前すぐ', memo: '明治古都館と鮮やかな対比をなすモダニズムの到達点。極細サッシやタイル目地の揃い、水盤の構成など徹底した美学。', lat: 34.99045, lng: 135.77348 },
+      { id: 53, area: 4, name: '河井寛次郎記念館', arch: '河井寛次郎 (1937)', architects: ['河井寛次郎'], year: 1937, station: '京阪 清水五条駅 徒歩約10分 / 市バス 馬町 徒歩約3分', memo: '陶芸家・河井寛次郎の自宅兼工房。用の美を体現した堅牢な木造建築と、役割ごとに設計された開口部・登り窯が魅力。', lat: 34.99472, lng: 135.77685 },
+      { id: 54, area: 4, name: '東福寺', arch: '三門 (1425)', architects: [], year: 1425, station: 'JR奈良線・京阪 東福寺駅 徒歩約10分', memo: '現存最古の巨大な三門の木組みから、通天橋、重森三玲によるモダンな方丈庭園まで幅広く学べる建築の宝庫。', lat: 34.97652, lng: 135.77405 },
+      { id: 55, area: 4, name: '泉涌寺（せんにゅうじ）', arch: '仏殿 (1668)', architects: [], year: 1668, station: 'JR奈良線・京阪 東福寺駅 徒歩約15分', memo: '参道を下った先に伽藍が広がる珍しい「下り参道」の配置。反りの強い屋根と複雑な斗栱を持つ禅宗様の仏殿。', lat: 34.98085, lng: 135.78125 },
+
+      // ==================== 京都編5（中京区）16件 ====================
+      { id: 56, area: 5, name: '京都鳩居堂 本店', arch: '内藤廣 (2020)', architects: ['内藤廣'], year: 2020, station: '地下鉄 京都市役所前駅 徒歩約1分', memo: 'むくりのある重厚な瓦屋根と細い鉄骨・ガラスの対比。木製ルーバーとアーチ架構が温かな光で包む名作。', lat: 35.00852, lng: 135.76872 },
+      { id: 57, area: 5, name: '京都鳩居堂 第三店舗', arch: '内藤廣 (2021)', architects: ['内藤廣'], year: 2021, station: '地下鉄 京都市役所前駅 徒歩約1分', memo: '本店中庭を挟んで真横に建つ内藤廣設計の空間。天窓からの光とのこぎり状の内壁が厳格で荘厳な空気をつくる。', lat: 35.00875, lng: 135.76912 },
+      { id: 58, area: 5, name: '京都市役所', arch: '武田五一・中野進一 (1927) / 日建設計 (2021)', architects: ['武田五一', '中野進一', '日建設計'], year: 2021, station: '地下鉄 京都市役所前駅 徒歩約1分', memo: '西洋の骨格に東洋的ディテールを散りばめた近代建築。大規模免震改修により都市の記憶を未来へ繋いだ保存再生。', lat: 35.01122, lng: 135.76852 },
+      { id: 59, area: 5, name: 'ホテルオークラ京都', arch: '三菱地所設計 (1994)', architects: ['三菱地所設計'], year: 1994, station: '地下鉄 京都市役所前駅直結', memo: '建設時は景観論争もあったが街に定着。石や木の本物のマテリアルが高い精度で納められた上品でクラシカルなロビー。', lat: 35.00948, lng: 135.77068 },
+      { id: 60, area: 5, name: 'ザ・ゲートホテル京都高瀬川 by HULIC（旧立誠小学校）', arch: '竹中工務店 (2020)', architects: ['竹中工務店'], year: 2020, station: '阪急 京都河原町駅 徒歩約3分', memo: '番組小学校の既存RC躯体を残しつつホテル・商業施設へコンバージョン。グラウンド跡の人工芝広場が街の憩いの場に。', lat: 35.00465, lng: 135.77078 },
+      { id: 61, area: 5, name: 'node hotel', arch: 'UDS (2018)', architects: ['UDS'], year: 2018, station: '地下鉄 四条駅 / 阪急 烏丸駅 徒歩約6分', memo: 'アートコレクターの住まいがコンセプト。薄暗い照明と打ち放しコンクリートが路地裏のスケールに馴染む大人の隠れ家。', lat: 35.00548, lng: 135.76235 },
+      { id: 62, area: 5, name: '新風館（旧京都中央電話局）', arch: '吉田鉄郎 (1926) / 隈研吾・NTTファシリティーズ (2020)', architects: ['吉田鉄郎', '隈研吾', 'NTTファシリティーズ'], year: 2020, station: '地下鉄 烏丸御池駅直結', memo: '吉田鉄郎のレンガ造の名作を一部保存・改修し木組みの増築を加えた複合施設。保存と改修のあり方を考えさせる事例。', lat: 35.01025, lng: 135.75975 },
+      { id: 63, area: 5, name: 'エースホテル京都', arch: '隈研吾 / Commune Design (2020)', architects: ['隈研吾', 'Commune Design'], year: 2020, station: '地下鉄 烏丸御池駅直結', memo: '新風館のホテルエリア。ロビーの大空間の木組みと西洋・東洋が混ざる遊び心あるインテリア、既存窓枠からの柔らかい光。', lat: 35.01032, lng: 135.75952 },
+      { id: 64, area: 5, name: 'カンデオホテルズ京都烏丸六角', arch: '東洋設計事務所・GARDE (2021)', architects: ['東洋設計事務所', 'GARDE'], year: 2021, station: '地下鉄 烏丸御池駅 徒歩約3分', memo: '登録有形文化財の旧伴家住宅をレセプションに取り込んだホテル。歴史的建造物の照明や色合わせの難しさを学べる事例。', lat: 35.00785, lng: 135.75862 },
+      { id: 65, area: 5, name: '六曜社 地下店', arch: '(1950)', architects: [], year: 1950, station: '地下鉄 京都市役所前駅 徒歩約5分', memo: '狭い階段を下りた先に広がる昭和の名喫茶。使い込まれた革張りソファやタイル装飾が心地よい。ゆで卵付きモーニングが名物。', lat: 35.00858, lng: 135.77045 },
+      { id: 66, area: 5, name: '京フレンチきしもと（KISHIMOTO）', arch: '(2002)', architects: [], year: 2002, station: '京阪 三条駅 徒歩約5分', memo: '元お茶屋の建物を活かしたフレンチ。夏の鴨川の納涼床という仮設建築的な空間体験で、都市と自然の境界を味わえる。', lat: 35.00795, lng: 135.77185 },
+      { id: 67, area: 5, name: '千總本店', arch: '田根剛 (2020)', architects: ['田根剛'], year: 2020, station: '地下鉄 烏丸御池駅 徒歩約3分', memo: '日本で田根剛氏の作品を見られる貴重な店舗。七宝文様をモチーフにした金属パネルが幾重にも重なる繊細なファサード。', lat: 35.01185, lng: 135.75815 },
+      { id: 68, area: 5, name: '京都国際マンガミュージアム（旧龍池小学校）', arch: '京都市営繕課 (1929) / 京都市・昭和設計 (2006)', architects: ['京都市営繕課', '昭和設計'], year: 2006, station: '地下鉄 烏丸御池駅 徒歩約2分', memo: '元龍池小学校をコンバージョンした先駆的事例。昭和初期の小学校のディテールを残し、人工芝グラウンドが文化の受け皿に。', lat: 35.01142, lng: 135.75985 },
+      { id: 69, area: 5, name: 'KYOTO SHIKIAMI CONCON（シキアミコンコン）', arch: '魚谷繁礼 (2019)', architects: ['魚谷繁礼'], year: 2019, station: '地下鉄 烏丸御池駅 / 二条城前駅 徒歩約6分', memo: '木造長屋を鉄骨で覆いコンテナを組み合わせた複合施設。コンテナ間の立体的な路地と色あせた瓦・錆色の調和が斬新。', lat: 35.01265, lng: 135.75445 },
+      { id: 70, area: 5, name: 'FORNI（HOTEL THE MITSUI KYOTO）', arch: '栗生明 / ANDRÉ FU・赤尾洋平 (2020)', architects: ['栗生明', 'ANDRÉ FU', '赤尾洋平'], year: 2020, station: '地下鉄 二条城前駅 徒歩約3分', memo: '三井総領家跡地のラグジュアリーホテル。梶井宮門を抜けた先の水盤と庭園、ANDRÉ FU氏の内装をレストラン利用でも体感できる。', lat: 35.01325, lng: 135.75185 },
+      { id: 71, area: 5, name: 'ルキャトーズィエム', arch: '(2013)', architects: [], year: 2013, station: '京阪 神宮丸太町駅 徒歩約5分', memo: '荒神口近くにある肉料理の名ビストロ。塩と肉のダイレクトな旨味を味わえるご褒美スポット。', lat: 35.01865, lng: 135.76895 },
+
+      // ==================== 京都編6（洛外〜洛中）21件 ====================
+      { id: 72, area: 6, name: '上賀茂神社（賀茂別雷神社）', arch: '本殿・権殿 (1863)', architects: [], year: 1863, station: '市バス 上賀茂神社前すぐ', memo: '広大な敷地に広がる白砂の広場と檜皮葺社殿の対比。清らかな御手洗川の流れが境内を潤す最古級の神社。', lat: 35.06042, lng: 135.75415 },
+      { id: 73, area: 6, name: '大徳寺 高桐院', arch: '(1601)', architects: [], year: 1601, station: '市バス 建勲神社前 徒歩約5分', memo: '竹林の石畳アプローチが結界をつくる市中の山居。薄暗い参道を抜けた書院から眺める眩しい庭園が建築を額縁に変える。', lat: 35.04395, lng: 135.74585 },
+      { id: 74, area: 6, name: 'あぶり餅 本家 根元 かざりや', arch: '(1637)', architects: [], year: 1637, station: '市バス 大徳寺前 徒歩約5分', memo: '今宮神社の参道にある老舗。厄除けの縁起物として親しまれる白みそタレのあぶり餅が絶品。', lat: 35.04725, lng: 135.74452 },
+      { id: 75, area: 6, name: '渡月橋', arch: '(1934)', architects: [], year: 1934, station: '嵐電 嵐山駅 徒歩約3分', memo: '嵐山の象徴的な橋。歴史ある名称と風光明媚な山並みを背景に持つが、観光動線としての使われ方も考えさせられる。', lat: 35.01315, lng: 135.67785 },
+      { id: 76, area: 6, name: '竹林の小径', arch: '年代不詳', architects: [], year: 1850, station: '嵐電 嵐山駅 徒歩約10分', memo: '野宮神社への参道。天高く伸びる竹林の垂直性と小柴垣が世俗を遮断する広大な天然の結界として機能している。', lat: 35.01685, lng: 135.67252 },
+      { id: 77, area: 6, name: '福田美術館', arch: '安田幸一 (2019)', architects: ['安田幸一'], year: 2019, station: '嵐電 嵐山駅 徒歩約5分', memo: '渡月橋そばの厳しい景観規制エリアに建つ美術館。網代模様から着想を得た石張りやガラス模様が特徴。', lat: 35.01358, lng: 135.67885 },
+      { id: 78, area: 6, name: '大河内山荘庭園', arch: '大河内傳次郎 (1930年代〜)', architects: ['大河内傳次郎'], year: 1935, station: '嵐電 嵐山駅 徒歩約15分', memo: '映画俳優・大河内傳次郎が生涯をかけて造り上げた回遊式借景庭園。起伏に富んだ地形と展望ゾーンからの眺望が圧巻。', lat: 35.01895, lng: 135.66915 },
+      { id: 79, area: 6, name: 'Hotel 宇多野 京都別墅', arch: '宗本順三 / 石井建築事務所 (1939 / 改修2024)', architects: ['宗本順三', '石井建築設計事務所'], year: 2024, station: '嵐電 宇多野駅 徒歩約5分', memo: '書院造・数寄屋・アールデコ洋館が混在する昭和初期の邸宅を原則現況保存でホテルへ再生した好例。', lat: 35.03142, lng: 135.71458 },
+      { id: 80, area: 6, name: '桂離宮', arch: '八条宮智仁親王・智忠親王 (17世紀)', architects: ['八条宮智仁親王', '八条宮智忠親王'], year: 1620, station: '阪急京都線 桂駅 徒歩約20分', memo: 'ブルーノ・タウトも絶賛した日本を代表する回遊式庭園と数寄屋建築。単なる素朴さを超えた前衛美術的な構成美。', lat: 34.97845, lng: 135.69325 },
+      { id: 81, area: 6, name: 'HOTEL SHE, KYOTO', arch: 'AT.O.DE / 龍崎翔子 (2019)', architects: ['AT.O.DE', '龍崎翔子'], year: 2019, station: '地下鉄烏丸線 九条駅 徒歩約3分', memo: '伝統的な京都表現をあえて使わずアメリカのモーテルをオマージュ。くすんだピンクやミントグリーンの存在感あるホテル。', lat: 34.97942, lng: 135.75842 },
+      { id: 82, area: 6, name: '東華菜館 本店', arch: 'ウィリアム・メレル・ヴォーリズ (1926)', architects: ['ウィリアム・メレル・ヴォーリズ'], year: 1926, station: '京阪本線 祇園四条駅すぐ', memo: '四条大橋たもとのスパニッシュ様式洋館。日本最古の手動式エレベーターやテラコッタ装飾も凄いが、春巻きがとにかく絶品。', lat: 35.00295, lng: 135.77125 },
+      { id: 83, area: 6, name: 'Apple 京都', arch: 'Foster + Partners (2018)', architects: ['Foster + Partners'], year: 2018, station: '阪急 烏丸駅 / 地下鉄 四条駅 徒歩約3分', memo: '障子や提灯から着想を得た行灯のようなファサード。グローバル企業のガラス外壁と地域の文脈が美しく着地したデザイン。', lat: 35.00338, lng: 135.76478 },
+      { id: 84, area: 6, name: 'sequence KYOTO GOJO', arch: '日建設計・乃村工藝社など (2020)', architects: ['日建設計', '乃村工藝社'], year: 2020, station: '地下鉄烏丸線 五条駅 徒歩約3分', memo: '五条通沿いのライフスタイルホテル。しっかり熱く負担が少ないミストサウナと選べるシャワーが都市型ホテル最高峰。', lat: 34.99495, lng: 135.75925 },
+      { id: 85, area: 6, name: 'hotel tou nishinotoin kyoto', arch: 'SUPPOSE DESIGN OFFICE (2021)', architects: ['SUPPOSE DESIGN OFFICE'], year: 2021, station: 'JR 京都駅 徒歩約10分', memo: '渋い銅板のアプローチと黒ベースの館内。市街地で景色が抜けない弱点を障子による光の拡散装置へ昇華した設計。', lat: 34.99125, lng: 135.75685 },
+      { id: 86, area: 6, name: 'メルキュール京都ステーション', arch: '東洋設計事務所 / DESIGN STUDIO CROW (2020)', architects: ['東洋設計事務所', 'DESIGN STUDIO CROW'], year: 2020, station: 'JR 京都駅 徒歩約10分', memo: '平安貴族の遊びを現代解釈した振り切ったインテリアデザイン。海外ホテルのような異国感があり内装の視点で刺激的。', lat: 34.98965, lng: 135.75542 },
+      { id: 87, area: 6, name: '渉成園（枳殻邸）', arch: '石川丈山 (1653)', architects: ['石川丈山'], year: 1653, station: 'JR 京都駅 徒歩約10分', memo: '東本願寺の飛地境内地にある回遊式庭園。都市化の中で色濃くなった木部の渋さと、維持更新を続ける建物の姿が印象的。', lat: 34.99015, lng: 135.76445 },
+      { id: 88, area: 6, name: '東本願寺 参拝接待所', arch: '高松伸 (1998)', architects: ['高松伸'], year: 1998, station: 'JR 京都駅 徒歩約5分', memo: '御影堂の足元の地下に埋まる現代建築。歴史的景観を邪魔せず、三角錐台のホールと天窓の光溜まりが神聖な空間を生む。', lat: 34.99142, lng: 135.75965 },
+      { id: 89, area: 6, name: 'Kaikado Café', arch: 'Thomas Lykke / OEO Studio (2016)', architects: ['Thomas Lykke', 'OEO Studio'], year: 2016, station: 'JR 京都駅 徒歩約10分', memo: '旧京都市電の架線詰所（登録有形文化財）を改修した開化堂のカフェ。レトロな面影と無垢材の家具が調和する居心地の良さ。', lat: 34.99278, lng: 135.76542 },
+      { id: 90, area: 6, name: '京都市立芸術大学', arch: '乾・RING・フジワラボ・o＋h・吉村設計共同体 (2023)', architects: ['乾久美子', 'RING', 'フジワラボ', 'o＋h', '吉村設計共同体'], year: 2023, station: 'JR 京都駅 徒歩約5分', memo: '崇仁地域へ移転した街に開かれたキャンパス。分棟配置や屋根の造形など、京都駅前のパブリック建築のあり方を考えさせる。', lat: 34.98542, lng: 135.76415 },
+      { id: 91, area: 6, name: '京都水族館', arch: '東洋設計事務所 / 大成建設 (2012)', architects: ['東洋設計事務所', '大成建設'], year: 2012, station: 'JR 京都駅 徒歩約15分', memo: '梅小路公園内の内陸型水族館。京都の川や海の展示やイルカショーで、建築巡りの合間に癒やされるスポット。', lat: 34.98745, lng: 135.74785 },
+      { id: 92, area: 6, name: '京都駅ビル', arch: '原広司 (1997)', architects: ['原広司'], year: 1997, station: 'JR 京都駅直結', memo: '長さ470m・高さ60m、4000枚のガラス屋根に覆われた現代の巨大な谷。都市と人間のスケールが交差する京都の玄関口。', lat: 34.98585, lng: 135.75885 },
+    ];
+
+    /**
+     * アプリケーション状態
+     */
+    const appState = {
+      activeTab: 'search', // 'search' | 'detail' | 'route'
+      selectedArea: 'all', // 'all' | 1..6
+      searchQuery: '',
+      selectedSpotId: null,
+      routeA: null,
+      routeB: null,
+      tileKey: 'seamlessphoto',
+    };
+
+    /**
+     * Leafletインスタンス管理
+     */
+    let mapInstance = null;
+    let baseTileLayer = null;
+    let spotMarkerGroup = null;
+    let routeOverlayGroup = null;
+    let toastTimer = null;
+
+    /**
+     * トースト通知表示
+     */
+    function showToast(message) {
+      const el = document.getElementById('toast');
+      el.textContent = message;
+      el.classList.remove('opacity-0');
+      el.classList.add('opacity-100');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        el.classList.remove('opacity-100');
+        el.classList.add('opacity-0');
+      }, 2000);
+    }
+
+    /**
+     * 絞り込み済みスポット配列を返す
+     */
+    function getFilteredSpots() {
+      const q = appState.searchQuery.trim().toLowerCase();
+      return SPOTS.filter((s) => {
+        if (appState.selectedArea !== 'all' && s.area !== appState.selectedArea) {
+          return false;
+        }
+        if (q) {
+          const areaObj = AREAS[s.area];
+          const text = `${s.name} ${s.arch} ${s.station} ${s.memo} ${areaObj.label}`.toLowerCase();
+          if (!text.includes(q)) return false;
+        }
+        return true;
+      });
+    }
+
+    /**
+     * Haversine公式による2点間直線距離（km）
+     */
+    function haversineKm(lat1, lng1, lat2, lng2) {
+      const rad = (d) => (d * Math.PI) / 180;
+      const R = 6371;
+      const dLat = rad(lat2 - lat1);
+      const dLng = rad(lng2 - lng1);
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(rad(lat1)) * Math.cos(rad(lat2)) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    /**
+     * 分数を読みやすい表記へフォーマット
+     */
+    function formatDuration(mins) {
+      const m = Math.max(1, Math.round(mins));
+      if (m < 60) return `約${m}分`;
+      const h = Math.floor(m / 60);
+      const rem = m % 60;
+      return rem === 0 ? `約${h}時間` : `約${h}時間${rem}分`;
+    }
+
+    /**
+     * タブ切り替え
+     */
+    function switchTab(tabName) {
+      appState.activeTab = tabName;
+
+      document.querySelectorAll('.tab-btn').forEach((btn) => {
+        const isTarget = btn.dataset.tab === tabName;
+        btn.classList.toggle('border-ink', isTarget);
+        btn.classList.toggle('text-ink', isTarget);
+        btn.classList.toggle('font-bold', isTarget);
+        btn.classList.toggle('bg-white', isTarget);
+        btn.classList.toggle('border-transparent', !isTarget);
+        btn.classList.toggle('text-muted', !isTarget);
+        btn.classList.toggle('font-medium', !isTarget);
+      });
+
+      document.getElementById('tabPanelSearch').classList.toggle('hidden', tabName !== 'search');
+      document.getElementById('tabPanelDetail').classList.toggle('hidden', tabName !== 'detail');
+      document.getElementById('tabPanelRoute').classList.toggle('hidden', tabName !== 'route');
+    }
+
+    /**
+     * 国土地理院タイルの切り替え
+     */
+    function setMapTile(tileKey) {
+      const cfg = GSI_TILES[tileKey] || GSI_TILES.seamlessphoto;
+      appState.tileKey = tileKey;
+
+      if (baseTileLayer) {
+        mapInstance.removeLayer(baseTileLayer);
+      }
+
+      baseTileLayer = L.tileLayer(cfg.url, {
+        maxZoom: cfg.maxZoom,
+        attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院</a>',
+      }).addTo(mapInstance);
+
+      const frame = document.getElementById('mapFrame');
+      frame.classList.toggle('map-mono', cfg.mono);
+
+      document.getElementById('currentTileLabel').textContent = cfg.label;
+      document.querySelectorAll('.tile-opt').forEach((btn) => {
+        const mark = btn.querySelector('.check-mark');
+        mark.classList.toggle('hidden', btn.dataset.tile !== tileKey);
+      });
+    }
+
+    /**
+     * 地図の初期化
+     */
+    function initMap() {
+      mapInstance = L.map('map', {
+        zoomControl: false,
+        attributionControl: true,
+      }).setView([35.016, 135.768], 12);
+
+      // 左上に控えめなズームボタンを配置
+      L.control.zoom({ position: 'topleft' }).addTo(mapInstance);
+
+      setMapTile(appState.tileKey);
+
+      spotMarkerGroup = L.layerGroup().addTo(mapInstance);
+      routeOverlayGroup = L.layerGroup().addTo(mapInstance);
+
+      // 地図の余白タップでタイルメニューを閉じる
+      mapInstance.on('click', () => {
+        document.getElementById('tileMenu').classList.add('hidden');
+      });
+
+      window.addEventListener('resize', () => {
+        if (mapInstance) mapInstance.invalidateSize();
+      });
+    }
+
+    /**
+     * エリア絞り込みチップ描画
+     */
+    function renderAreaChips() {
+      const container = document.getElementById('areaChips');
+      container.innerHTML = '';
+
+      const chipList = [
+        { key: 'all', label: 'すべて', color: '#161614' },
+        ...Object.values(AREAS).map((a) => ({ key: a.key, label: a.label, color: a.color })),
+      ];
+
+      chipList.forEach((item) => {
+        const isActive = appState.selectedArea === item.key;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 border transition active:scale-95 ${
+          isActive
+            ? 'bg-ink text-white border-ink'
+            : 'bg-paper text-ink border-line hover:border-ink/50'
+        }`;
+
+        if (item.key !== 'all') {
+          const dot = document.createElement('span');
+          dot.className = 'w-2 h-2 rounded-full shrink-0';
+          dot.style.backgroundColor = isActive ? '#ffffff' : item.color;
+          btn.appendChild(dot);
+        }
+
+        const labelSpan = document.createElement('span');
+        labelSpan.textContent = item.label;
+        btn.appendChild(labelSpan);
+
+        btn.addEventListener('click', () => {
+          appState.selectedArea = item.key;
+          refreshView();
+          fitToCurrentSpots(false);
+        });
+
+        container.appendChild(btn);
+      });
+    }
+
+    /**
+     * 地図上のスポットピン描画
+     */
+    function renderMarkers(filteredSpots) {
+      spotMarkerGroup.clearLayers();
+
+      filteredSpots.forEach((spot) => {
+        const areaInfo = AREAS[spot.area];
+        const isSelected = spot.id === appState.selectedSpotId;
+        const icon = L.divIcon({
+          className: '',
+          html: `<div class="spot-pin ${isSelected ? 'is-selected' : ''}" style="background-color:${areaInfo.color};">${spot.id}</div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
+        });
+
+        const marker = L.marker([spot.lat, spot.lng], {
+          icon,
+          zIndexOffset: isSelected ? 600 : 100,
+        });
+
+        marker.on('click', (e) => {
+          L.DomEvent.stopPropagation(e);
+          document.getElementById('tileMenu').classList.add('hidden');
+          selectSpot(spot.id, { pan: true, openDetail: true });
+        });
+
+        marker.addTo(spotMarkerGroup);
+      });
+    }
+
+    /**
+     * 【探す】タブのスポット一覧描画
+     */
+    function renderSpotList(filteredSpots) {
+      const listEl = document.getElementById('spotList');
+      const countText = document.getElementById('searchCountText');
+      const headerBadge = document.getElementById('headerCountBadge');
+      const resetBtn = document.getElementById('resetFilterBtn');
+
+      countText.textContent = `${filteredSpots.length} スポットを表示中`;
+      headerBadge.textContent = `${filteredSpots.length}件`;
+
+      const isFiltered = appState.selectedArea !== 'all' || appState.searchQuery.trim() !== '';
+      resetBtn.classList.toggle('hidden', !isFiltered);
+
+      listEl.innerHTML = '';
+
+      if (filteredSpots.length === 0) {
+        listEl.innerHTML = `
+          <div class="py-10 text-center text-xs text-muted bg-paper rounded-xl border border-line">
+            条件に一致する建築が見つかりませんでした。
+          </div>
+        `;
+        return;
+      }
+
+      filteredSpots.forEach((spot) => {
+        const areaInfo = AREAS[spot.area];
+        const isSelected = spot.id === appState.selectedSpotId;
+
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = `w-full text-left p-3 rounded-xl border transition flex flex-col gap-1 ${
+          isSelected
+            ? 'bg-paper border-ink shadow-sm'
+            : 'bg-white border-line hover:border-ink/40 hover:bg-paper/50'
+        }`;
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between gap-2 w-full">
+            <span class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-muted">
+              <span class="w-2 h-2 rounded-full" style="background-color:${areaInfo.color};"></span>
+              <span>${areaInfo.label}</span>
+            </span>
+            <span class="text-[10px] text-muted truncate max-w-[50%]">${spot.arch}</span>
+          </div>
+          <div class="text-xs md:text-[13px] font-bold text-ink leading-snug">${spot.id}. ${spot.name}</div>
+          <div class="text-[11px] text-muted truncate">${spot.station}</div>
+        `;
+
+        card.addEventListener('click', () => {
+          selectSpot(spot.id, { pan: true, openDetail: true });
+        });
+
+        listEl.appendChild(card);
+      });
+    }
+
+    /**
+     * スポット選択＆【詳細】タブ更新
+     */
+    function selectSpot(spotId, options = { pan: true, openDetail: true }) {
+      const spot = SPOTS.find((s) => s.id === spotId);
+      if (!spot) return;
+
+      appState.selectedSpotId = spotId;
+      const filtered = getFilteredSpots();
+      renderMarkers(filtered);
+      renderSpotList(filtered);
+
+      const areaInfo = AREAS[spot.area];
+
+      document.getElementById('detailEmpty').classList.add('hidden');
+      document.getElementById('detailCard').classList.remove('hidden');
+
+      const badge = document.getElementById('detailAreaBadge');
+      badge.textContent = `${areaInfo.label} #${spot.id}`;
+      badge.style.backgroundColor = areaInfo.color;
+
+      document.getElementById('detailName').textContent = spot.name;
+      document.getElementById('detailArchitect').textContent = spot.arch;
+      document.getElementById('detailStation').textContent = spot.station;
+      document.getElementById('detailMemo').textContent = spot.memo;
+
+      // note解説記事リンク
+      const noteBtn = document.getElementById('detailNoteBtn');
+      noteBtn.href = areaInfo.url;
+      document.getElementById('detailNoteBtnText').textContent = `解説記事を読む（${areaInfo.short}）`;
+
+      // Googleマップ電車・バス経路リンク
+      const destQuery = encodeURIComponent(`${spot.name} ${spot.lat},${spot.lng}`);
+      document.getElementById('detailTransitBtn').href =
+        `https://www.google.com/maps/dir/?api=1&destination=${destQuery}&travelmode=transit`;
+
+      // 同じ設計者の建築（竣工年順）
+      renderSameArchitectSection(spot);
+
+      if (options.openDetail) {
+        switchTab('detail');
+      }
+
+      if (options.pan && mapInstance) {
+        const targetZoom = Math.max(mapInstance.getZoom(), 14);
+        mapInstance.flyTo([spot.lat, spot.lng], targetZoom, { duration: 0.45 });
+      }
+    }
+
+    /**
+     * 同じ設計者の建築（竣工年順）を描画
+     */
+    function renderSameArchitectSection(currentSpot) {
+      const section = document.getElementById('sameArchitectSection');
+      const groupsContainer = document.getElementById('sameArchitectGroups');
+      groupsContainer.innerHTML = '';
+
+      if (!currentSpot.architects || currentSpot.architects.length === 0) {
+        section.classList.add('hidden');
+        return;
+      }
+
+      let hasAnyGroup = false;
+
+      currentSpot.architects.forEach((archName) => {
+        const works = SPOTS
+          .filter((s) => s.architects.includes(archName))
+          .sort((a, b) => a.year - b.year);
+
+        if (works.length < 2) return;
+        hasAnyGroup = true;
+
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'space-y-1.5';
+
+        const heading = document.createElement('div');
+        heading.className = 'text-[11px] font-semibold text-muted';
+        heading.textContent = `${archName}（${works.length}件）`;
+        groupDiv.appendChild(heading);
+
+        works.forEach((w) => {
+          const isCurrent = w.id === currentSpot.id;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = `w-full text-left px-2.5 py-2 rounded-lg text-xs flex items-center justify-between gap-2 border transition ${
+            isCurrent
+              ? 'bg-ink text-white border-ink font-semibold'
+              : 'bg-paper text-ink border-line hover:border-ink/50'
+          }`;
+
+          const yearLabel = w.year < 9000 ? `${w.year}` : '—';
+          btn.innerHTML = `
+            <span class="truncate">${w.name}</span>
+            <span class="shrink-0 text-[10px] ${isCurrent ? 'text-white/80' : 'text-muted'}">${AREAS[w.area].short}・${yearLabel}</span>
+          `;
+
+          btn.addEventListener('click', () => {
+            // 絞り込みで見えない場合は全エリア表示に戻してジャンプ
+            if (appState.selectedArea !== 'all' && appState.selectedArea !== w.area) {
+              appState.selectedArea = 'all';
+              renderAreaChips();
+            }
+            selectSpot(w.id, { pan: true, openDetail: true });
+          });
+
+          groupDiv.appendChild(btn);
+        });
+
+        groupsContainer.appendChild(groupDiv);
+      });
+
+      section.classList.toggle('hidden', !hasAnyGroup);
+    }
+
+    /**
+     * 2地点ルート用セレクトボックス初期化
+     */
+    function populateRouteSelects() {
+      const selA = document.getElementById('selectOriginA');
+      const selB = document.getElementById('selectDestB');
+
+      const buildOptions = (placeholder) => {
+        let html = `<option value="">${placeholder}</option>`;
+        Object.values(AREAS).forEach((area) => {
+          html += `<optgroup label="${area.label}">`;
+          SPOTS.filter((s) => s.area === area.key).forEach((s) => {
+            html += `<option value="${s.id}">${s.id}. ${s.name}</option>`;
+          });
+          html += `</optgroup>`;
+        });
+        return html;
+      };
+
+      selA.innerHTML = buildOptions('出発地 (A) を選択...');
+      selB.innerHTML = buildOptions('目的地 (B) を選択...');
+    }
+
+    /**
+     * 2地点ルートの描画・距離計算・UI更新
+     */
+    function updateRouteDisplay(shouldFit = true) {
+      routeOverlayGroup.clearLayers();
+
+      const selA = document.getElementById('selectOriginA');
+      const selB = document.getElementById('selectDestB');
+      selA.value = appState.routeA ? String(appState.routeA) : '';
+      selB.value = appState.routeB ? String(appState.routeB) : '';
+
+      const spotA = SPOTS.find((s) => s.id === appState.routeA) || null;
+      const spotB = SPOTS.find((s) => s.id === appState.routeB) || null;
+
+      // タブの赤いアクティブインジケーター
+      document.getElementById('routeActiveDot').classList.toggle('hidden', !(spotA || spotB));
+
+      // A・Bの目立つマーカーを描画
+      if (spotA) {
+        L.marker([spotA.lat, spotA.lng], {
+          zIndexOffset: 900,
+          icon: L.divIcon({
+            className: '',
+            html: '<div class="route-badge-pin route-badge-a">A</div>',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15],
+          }),
+        }).addTo(routeOverlayGroup);
+      }
+
+      if (spotB) {
+        L.marker([spotB.lat, spotB.lng], {
+          zIndexOffset: 900,
+          icon: L.divIcon({
+            className: '',
+            html: '<div class="route-badge-pin route-badge-b">B</div>',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15],
+          }),
+        }).addTo(routeOverlayGroup);
+      }
+
+      const resultBox = document.getElementById('routeResultBox');
+      const hintBox = document.getElementById('routeHintBox');
+
+      if (spotA && spotB && spotA.id !== spotB.id) {
+        // 白縁＋黒破線の二重ルート線（航空写真でもくっきり）
+        const latlngs = [
+          [spotA.lat, spotA.lng],
+          [spotB.lat, spotB.lng],
+        ];
+        L.polyline(latlngs, {
+          color: '#ffffff',
+          weight: 6.5,
+          opacity: 0.92,
+        }).addTo(routeOverlayGroup);
+
+        L.polyline(latlngs, {
+          color: '#161614',
+          weight: 3,
+          opacity: 0.95,
+          dashArray: '7, 7',
+        }).addTo(routeOverlayGroup);
+
+        // 距離・所要時間目安計算
+        const straightKm = haversineKm(spotA.lat, spotA.lng, spotB.lat, spotB.lng);
+        const roadKm = straightKm * 1.25;
+        const walkMin = (roadKm / 4.5) * 60;
+        const transitMin = (roadKm / 15.0) * 60 + 8;
+        const taxiMin = (roadKm / 24.0) * 60 + 2;
+
+        document.getElementById('routeDistText').textContent =
+          `${straightKm.toFixed(1)}km / 約${roadKm.toFixed(1)}km`;
+        document.getElementById('routeWalkText').textContent = formatDuration(walkMin);
+        document.getElementById('routeTransitText').textContent = formatDuration(transitMin);
+        document.getElementById('routeTaxiText').textContent = formatDuration(taxiMin);
+
+        const originParam = encodeURIComponent(`${spotA.name} ${spotA.lat},${spotA.lng}`);
+        const destParam = encodeURIComponent(`${spotB.name} ${spotB.lat},${spotB.lng}`);
+        document.getElementById('btnGoogleRouteAB').href =
+          `https://www.google.com/maps/dir/?api=1&origin=${originParam}&destination=${destParam}&travelmode=transit`;
+
+        resultBox.classList.remove('hidden');
+        hintBox.classList.add('hidden');
+
+        if (shouldFit && mapInstance) {
+          mapInstance.fitBounds(L.latLngBounds(latlngs), { padding: [44, 44], maxZoom: 15 });
+        }
+      } else {
+        resultBox.classList.add('hidden');
+        hintBox.classList.remove('hidden');
+        if (spotA && spotB && spotA.id === spotB.id) {
+          hintBox.textContent = '出発地(A)と目的地(B)には異なるスポットを選択してください。';
+        } else {
+          hintBox.textContent = '出発地(A)と目的地(B)をそれぞれ選ぶと、地図上にルート線を引き、距離と移動時間の目安を表示します。';
+        }
+      }
+    }
+
+    /**
+     * 表示中スポット全体が収まるようズーム調整
+     */
+    function fitToCurrentSpots(notify = true) {
+      const spots = getFilteredSpots();
+      if (!spots.length || !mapInstance) return;
+      const bounds = L.latLngBounds(spots.map((s) => [s.lat, s.lng]));
+      mapInstance.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
+      if (notify) showToast(`${spots.length}件全体を表示しました`);
+    }
+
+    /**
+     * 前後のスポットへ移動
+     */
+    function moveRelativeSpot(delta) {
+      const spots = getFilteredSpots();
+      if (!spots.length) return;
+      const idx = spots.findIndex((s) => s.id === appState.selectedSpotId);
+      const nextIdx = idx === -1 ? 0 : (idx + delta + spots.length) % spots.length;
+      selectSpot(spots[nextIdx].id, { pan: true, openDetail: true });
+    }
+
+    /**
+     * 全体再描画
+     */
+    function refreshView() {
+      const filtered = getFilteredSpots();
+      renderAreaChips();
+      renderMarkers(filtered);
+      renderSpotList(filtered);
+    }
+
+    /**
+     * イベントリスナー登録
+     */
+    function bindEvents() {
+      // タブ切替
+      document.querySelectorAll('.tab-btn').forEach((btn) => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+      });
+
+      // キーワード検索
+      const searchInput = document.getElementById('searchInput');
+      const clearBtn = document.getElementById('clearSearchBtn');
+      searchInput.addEventListener('input', (e) => {
+        appState.searchQuery = e.target.value;
+        clearBtn.classList.toggle('hidden', appState.searchQuery.length === 0);
+        refreshView();
+      });
+
+      clearBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        appState.searchQuery = '';
+        clearBtn.classList.add('hidden');
+        refreshView();
+      });
+
+      // 絞り込み解除
+      document.getElementById('resetFilterBtn').addEventListener('click', () => {
+        appState.selectedArea = 'all';
+        appState.searchQuery = '';
+        searchInput.value = '';
+        clearBtn.classList.add('hidden');
+        refreshView();
+        fitToCurrentSpots(false);
+        showToast('絞り込みを解除しました');
+      });
+
+      // 詳細の前後移動
+      document.getElementById('btnPrevSpot').addEventListener('click', () => moveRelativeSpot(-1));
+      document.getElementById('btnNextSpot').addEventListener('click', () => moveRelativeSpot(1));
+
+      // 詳細からA / Bセット
+      document.getElementById('btnSetA').addEventListener('click', () => {
+        if (!appState.selectedSpotId) return;
+        appState.routeA = appState.selectedSpotId;
+        updateRouteDisplay(Boolean(appState.routeA && appState.routeB));
+        if (appState.routeA && appState.routeB && appState.routeA !== appState.routeB) {
+          switchTab('route');
+          showToast('ルートを表示しました');
+        } else {
+          showToast('出発地 A に設定しました');
+        }
+      });
+
+      document.getElementById('btnSetB').addEventListener('click', () => {
+        if (!appState.selectedSpotId) return;
+        appState.routeB = appState.selectedSpotId;
+        updateRouteDisplay(Boolean(appState.routeA && appState.routeB));
+        if (appState.routeA && appState.routeB && appState.routeA !== appState.routeB) {
+          switchTab('route');
+          showToast('ルートを表示しました');
+        } else {
+          showToast('目的地 B に設定しました');
+        }
+      });
+
+      // 2地点ルートのセレクト変更
+      document.getElementById('selectOriginA').addEventListener('change', (e) => {
+        appState.routeA = e.target.value ? Number(e.target.value) : null;
+        updateRouteDisplay(true);
+      });
+
+      document.getElementById('selectDestB').addEventListener('change', (e) => {
+        appState.routeB = e.target.value ? Number(e.target.value) : null;
+        updateRouteDisplay(true);
+      });
+
+      // A⇔B 入れ替え
+      document.getElementById('btnSwapAB').addEventListener('click', () => {
+        const tmp = appState.routeA;
+        appState.routeA = appState.routeB;
+        appState.routeB = tmp;
+        updateRouteDisplay(true);
+        showToast('出発地と目的地を入れ替えました');
+      });
+
+      // ルートクリア
+      document.getElementById('btnClearRoute').addEventListener('click', () => {
+        appState.routeA = null;
+        appState.routeB = null;
+        updateRouteDisplay(false);
+        showToast('ルートをクリアしました');
+      });
+
+      // 地図右下の全体表示ボタン
+      document.getElementById('btnFitBounds').addEventListener('click', () => fitToCurrentSpots(true));
+
+      // 地図タイル切替メニュー
+      const tileMenu = document.getElementById('tileMenu');
+      document.getElementById('btnTileMenu').addEventListener('click', (e) => {
+        e.stopPropagation();
+        tileMenu.classList.toggle('hidden');
+      });
+
+      document.querySelectorAll('.tile-opt').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          setMapTile(btn.dataset.tile);
+          tileMenu.classList.add('hidden');
+          showToast(`${GSI_TILES[btn.dataset.tile].label}に切り替えました`);
+        });
+      });
+
+      document.addEventListener('click', () => {
+        tileMenu.classList.add('hidden');
+      });
+    }
+
+    // 起動処理
+    document.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      populateRouteSelects();
+      bindEvents();
+      refreshView();
+      fitToCurrentSpots(false);
+    });
+  </script>
+</body>
+</html>
