@@ -17,8 +17,8 @@
       height: 100%;
       width: 100%;
       overflow: hidden;
-      background: #0f172a;
-      color: #f8fafc;
+      background: #111111;
+      color: #111111;
       font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
     }
     #app {
@@ -27,7 +27,8 @@
       height: 100%;
       width: 100%;
     }
-    /* スマホ：上部に地図、下部に操作・詳細シート */
+
+    /* スマホ：上部に地図（基本は広め）、下部にシート */
     #map-stage {
       position: relative;
       width: 100%;
@@ -35,22 +36,23 @@
       min-height: 220px;
       flex-shrink: 0;
       transition: height 0.22s ease;
-      background: #1e293b;
+      background: #1a1a1a;
     }
     #map-stage.expanded-map {
-      height: calc(100% - 52px);
+      height: calc(100% - 50px);
     }
     #map {
       width: 100%;
       height: 100%;
       z-index: 1;
     }
+
     #bottom-sheet {
       position: relative;
       flex: 1;
-      min-height: 52px;
-      background: #0f172a;
-      border-top: 1px solid #334155;
+      min-height: 50px;
+      background: #ffffff;
+      border-top: 1px solid #d4d4d4;
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -60,24 +62,27 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 6px 12px;
-      background: #1e293b;
-      border-bottom: 1px solid #334155;
+      padding: 8px 14px;
+      background: #fafafa;
+      border-bottom: 1px solid #e5e5e5;
       cursor: pointer;
       user-select: none;
       flex-shrink: 0;
     }
     .handle-pill {
-      width: 36px;
+      width: 34px;
       height: 4px;
       border-radius: 999px;
-      background: #64748b;
-      margin: 0 auto;
+      background: #a3a3a3;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
     }
     #sheet-content {
       flex: 1;
       overflow-y: auto;
-      padding: 10px 12px 20px;
+      padding: 12px 14px 24px;
+      background: #ffffff;
     }
 
     /* PC（md以上）：左にパネル、右に地図 */
@@ -87,12 +92,12 @@
       }
       #bottom-sheet {
         order: 1;
-        width: 390px;
-        max-width: 45vw;
+        width: 400px;
+        max-width: 44vw;
         height: 100%;
         flex: none;
         border-top: none;
-        border-right: 1px solid #334155;
+        border-right: 1px solid #d4d4d4;
       }
       #map-stage {
         order: 2;
@@ -105,53 +110,66 @@
       }
     }
 
+    /* モノトーンのマーカー */
     .spot-marker {
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 28px;
-      height: 28px;
+      width: 26px;
+      height: 26px;
       border-radius: 999px;
-      background: #0284c7;
+      background: #111111;
       color: #ffffff;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 700;
       border: 2px solid #ffffff;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
-      transition: transform 0.15s ease, background-color 0.15s ease;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
+      transition: transform 0.15s ease, background-color 0.15s ease, color 0.15s ease;
     }
     .spot-marker.active {
-      background: #f59e0b;
-      color: #0f172a;
-      transform: scale(1.2);
+      background: #ffffff;
+      color: #111111;
+      border: 2.5px solid #111111;
+      transform: scale(1.25);
       z-index: 999 !important;
     }
+
+    /* Leaflet コントロールをモノトーンに統一 */
     .leaflet-control-attribution {
       font-size: 10px !important;
-      background: rgba(15, 23, 42, 0.78) !important;
-      color: #e2e8f0 !important;
+      background: rgba(255, 255, 255, 0.88) !important;
+      color: #262626 !important;
     }
     .leaflet-control-attribution a {
-      color: #7dd3fc !important;
+      color: #111111 !important;
+      text-decoration: underline;
+    }
+    .leaflet-bar a {
+      background-color: #ffffff !important;
+      color: #111111 !important;
+      border-color: #d4d4d4 !important;
+    }
+    .leaflet-bar a:hover {
+      background-color: #f5f5f5 !important;
     }
   </style>
 </head>
 <body>
   <div id="app">
     <!-- 地図エリア -->
-    <div id="map-stage">
+    <div id="map-stage" class="expanded-map">
       <div id="map"></div>
 
       <!-- 地図右上のコンパクト操作 -->
       <div class="absolute top-2.5 right-2.5 z-[400] flex flex-col gap-1.5 items-end">
         <select id="layer-select" aria-label="地図の種類"
-          class="bg-slate-900/90 text-slate-100 text-xs border border-slate-600 rounded-lg px-2.5 py-1.5 shadow backdrop-blur">
+          class="bg-white/95 text-neutral-900 text-xs font-medium border border-neutral-400 rounded-md px-2.5 py-1.5 shadow-sm backdrop-blur focus:outline-none">
           <option value="photo" selected>航空写真</option>
           <option value="std">標準地図</option>
           <option value="pale">淡色地図</option>
         </select>
         <button id="btn-fit-all" type="button"
-          class="bg-slate-900/90 hover:bg-slate-800 text-slate-100 text-xs border border-slate-600 rounded-lg px-2.5 py-1.5 shadow backdrop-blur">
+          class="bg-white/95 hover:bg-neutral-100 text-neutral-900 text-xs font-medium border border-neutral-400 rounded-md px-2.5 py-1.5 shadow-sm backdrop-blur">
           全体表示
         </button>
       </div>
@@ -159,23 +177,23 @@
 
     <!-- 下部シート（スマホ）／左パネル（PC） -->
     <div id="bottom-sheet">
-      <div id="sheet-handle-bar" title="タップで地図を広く／シートを開く">
-        <span id="sheet-status-label" class="text-[11px] text-slate-300 truncate">スポット一覧・詳細</span>
+      <div id="sheet-handle-bar" title="タップでシートを開閉">
+        <span id="sheet-status-label" class="text-xs font-medium text-neutral-800 truncate max-w-[55%]">京都 建築巡り（全92件）</span>
         <div class="handle-pill"></div>
-        <button id="btn-toggle-sheet" type="button" class="text-[11px] text-sky-400 font-medium">
-          地図を広く
+        <button id="btn-toggle-sheet" type="button" class="text-xs text-neutral-900 font-semibold underline underline-offset-2">
+          シートを開く
         </button>
       </div>
 
       <!-- タブバー -->
-      <div class="flex border-b border-slate-800 bg-slate-900/70 shrink-0">
-        <button data-tab="list" class="tab-btn flex-1 py-2 text-xs font-semibold text-sky-400 border-b-2 border-sky-400">
-          探す (<span id="count-badge">0</span>)
+      <div class="flex border-b border-neutral-200 bg-neutral-50 shrink-0">
+        <button data-tab="list" class="tab-btn flex-1 py-2.5 text-xs font-bold text-neutral-900 border-b-2 border-neutral-900">
+          探す (<span id="count-badge">92</span>)
         </button>
-        <button data-tab="detail" class="tab-btn flex-1 py-2 text-xs font-semibold text-slate-400 border-b-2 border-transparent">
+        <button data-tab="detail" class="tab-btn flex-1 py-2.5 text-xs font-semibold text-neutral-400 border-b-2 border-transparent">
           詳細
         </button>
-        <button data-tab="route" class="tab-btn flex-1 py-2 text-xs font-semibold text-slate-400 border-b-2 border-transparent">
+        <button data-tab="route" class="tab-btn flex-1 py-2.5 text-xs font-semibold text-neutral-400 border-b-2 border-transparent">
           2地点ルート
         </button>
       </div>
@@ -184,51 +202,58 @@
       <div id="sheet-content">
         <!-- 1. 探すタブ -->
         <div id="tab-list" class="space-y-2.5">
-          <div class="flex gap-1.5">
+          <div class="space-y-1.5">
             <input id="search-input" type="text" placeholder="建築名・設計者・エリアで検索"
-              class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 placeholder-slate-400 focus:outline-none focus:border-sky-400" />
-            <select id="series-filter"
-              class="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-sky-400">
-              <option value="all">全編</option>
-              <option value="京都編1">京都編1</option>
-              <option value="京都編2">京都編2</option>
-              <option value="京都編3">京都編3</option>
-              <option value="京都編4">京都編4</option>
-              <option value="京都編5">京都編5</option>
-              <option value="京都編6">京都編6</option>
-            </select>
+              class="w-full bg-neutral-50 border border-neutral-300 rounded-md px-3 py-1.5 text-xs text-neutral-900 placeholder-neutral-400 focus:outline-none focus:border-neutral-900" />
+            <div class="flex gap-1.5">
+              <select id="series-filter" aria-label="シリーズ絞り込み"
+                class="flex-1 bg-neutral-50 border border-neutral-300 rounded-md px-2 py-1.5 text-xs text-neutral-900 focus:outline-none focus:border-neutral-900">
+                <option value="all">京都編 すべて</option>
+                <option value="京都編1">京都編1（洛北・15）</option>
+                <option value="京都編2">京都編2（北白川〜岡崎・10）</option>
+                <option value="京都編3">京都編3（南禅寺〜山科・12）</option>
+                <option value="京都編4">京都編4（東山区・18）</option>
+                <option value="京都編5">京都編5（中京区・16）</option>
+                <option value="京都編6">京都編6（北・右京・西京・南・下京・21）</option>
+              </select>
+              <select id="sort-select" aria-label="並び替え"
+                class="flex-1 bg-neutral-50 border border-neutral-300 rounded-md px-2 py-1.5 text-xs text-neutral-900 focus:outline-none focus:border-neutral-900">
+                <option value="default">記事順（1〜92）</option>
+                <option value="year-asc">年代順（古い順）</option>
+                <option value="year-desc">年代順（新しい順）</option>
+              </select>
+            </div>
           </div>
           <div id="spot-list" class="space-y-1.5"></div>
         </div>
 
         <!-- 2. 詳細タブ -->
         <div id="tab-detail" class="hidden space-y-3">
-          <div id="detail-empty" class="text-xs text-slate-400 py-6 text-center">
+          <div id="detail-empty" class="text-xs text-neutral-500 py-8 text-center">
             地図上のピンまたは「探す」から建築を選ぶと詳細が表示されます。
           </div>
           <div id="detail-body" class="hidden space-y-3">
             <div class="flex items-start justify-between gap-2">
               <div>
-                <span id="detail-series" class="inline-block text-[10px] px-2 py-0.5 rounded bg-sky-950 text-sky-300 border border-sky-800 mb-1"></span>
-                <h2 id="detail-name" class="text-base font-bold text-white leading-snug"></h2>
-                <p id="detail-meta" class="text-xs text-slate-300 mt-0.5"></p>
+                <span id="detail-series" class="inline-block text-[10px] font-medium px-2 py-0.5 rounded bg-neutral-900 text-white mb-1.5"></span>
+                <h2 id="detail-name" class="text-base font-bold text-neutral-900 leading-snug"></h2>
+                <p id="detail-meta" class="text-xs text-neutral-600 mt-1 leading-relaxed"></p>
               </div>
               <button id="btn-close-detail" type="button"
-                class="text-xs px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 shrink-0">
+                class="text-xs px-2.5 py-1 rounded bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border border-neutral-300 shrink-0">
                 閉じる
               </button>
             </div>
 
             <!-- 写真表示エリア（1〜2枚・設定時のみ表示） -->
-            <div id="detail-photos" class="grid grid-cols-2 gap-2"></div>
+            <div id="detail-photos" class="hidden"></div>
 
-            <!-- メモ -->
-            <p id="detail-memo" class="text-xs text-slate-200 leading-relaxed bg-slate-800/70 p-2.5 rounded-lg border border-slate-700/70"></p>
+            <!-- ひとことメモ -->
+            <p id="detail-memo" class="text-xs text-neutral-700 leading-relaxed bg-neutral-50 p-3 rounded-md border border-neutral-200"></p>
 
             <!-- 同じ設計者の作品（竣工年順） -->
-            <div id="same-architect-box" class="hidden pt-1 border-t border-slate-800">
-              <h3 id="same-architect-title" class="text-xs font-bold text-amber-300 mb-1.5"></h3>
-              <div id="same-architect-list" class="space-y-1"></div>
+            <div id="same-architect-box" class="hidden pt-3 border-t border-neutral-200 space-y-2">
+              <div id="same-architect-list" class="space-y-2.5"></div>
             </div>
           </div>
         </div>
@@ -236,133 +261,139 @@
         <!-- 3. 2地点ルートタブ -->
         <div id="tab-route" class="hidden space-y-2.5">
           <div>
-            <label class="block text-[11px] text-slate-400 mb-1">出発地</label>
-            <select id="route-from" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100"></select>
+            <label class="block text-[11px] font-medium text-neutral-600 mb-1">出発地</label>
+            <select id="route-from" class="w-full bg-neutral-50 border border-neutral-300 rounded-md px-2.5 py-1.5 text-xs text-neutral-900"></select>
           </div>
           <div>
-            <label class="block text-[11px] text-slate-400 mb-1">目的地</label>
-            <select id="route-to" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100"></select>
+            <label class="block text-[11px] font-medium text-neutral-600 mb-1">目的地</label>
+            <select id="route-to" class="w-full bg-neutral-50 border border-neutral-300 rounded-md px-2.5 py-1.5 text-xs text-neutral-900"></select>
           </div>
           <div class="flex gap-2">
             <button id="btn-calc-route" type="button"
-              class="flex-1 bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold py-2 rounded-lg">
-              直線距離・ルート表示
+              class="flex-1 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-semibold py-2 rounded-md">
+              直線距離・ライン表示
             </button>
             <button id="btn-clear-route" type="button"
-              class="px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg border border-slate-700">
+              class="px-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs rounded-md border border-neutral-300">
               消去
             </button>
           </div>
-          <div id="route-result" class="text-xs text-slate-300 bg-slate-800/60 p-2.5 rounded-lg border border-slate-800 hidden"></div>
+          <div id="route-result" class="text-xs text-neutral-800 bg-neutral-50 p-3 rounded-md border border-neutral-200 hidden"></div>
         </div>
       </div>
     </div>
   </div>
 
   <script>
-    // 京都編1〜6 建築92スポットデータ
+    // 京都編1〜6 全92スポット（原典準拠）
     // photos: ["./images/xxx.jpg"] のように配列で1〜2枚指定可能
     const SPOTS = [
-      { id: 1, series: "京都編1", name: "京都駅ビル", architect: "原広司", year: 1997, area: "下京区", lat: 34.9858, lng: 135.7588, memo: "巨大な吹き抜け空間と空中径路が特徴のターミナル駅。", photos: [] },
-      { id: 2, series: "京都編1", name: "京都タワー", architect: "山田守", year: 1964, area: "下京区", lat: 34.9875, lng: 135.7593, memo: "白い円筒形の灯台をモチーフとした鉄骨造の展望塔。", photos: [] },
-      { id: 3, series: "京都編1", name: "東寺 五重塔", architect: "空海（伝）", year: 1644, area: "南区", lat: 34.9803, lng: 135.7478, memo: "木造建築として日本最大の高さを誇る五重塔。", photos: [] },
-      { id: 4, series: "京都編1", name: "西本願寺 飛雲閣", architect: "不詳", year: 1590, area: "下京区", lat: 34.9917, lng: 135.7518, memo: "京都三名閣のひとつに数えられる楼閣建築。", photos: [] },
-      { id: 5, series: "京都編1", name: "三十三間堂", architect: "後白河法皇発願", year: 1266, area: "東山区", lat: 34.9879, lng: 135.7715, memo: "南北約120メートルの長大な本堂に千手観音像が並ぶ。", photos: [] },
-      { id: 6, series: "京都編1", name: "京都国立博物館 平成知新館", architect: "谷口吉生", year: 2014, area: "東山区", lat: 34.9896, lng: 135.7728, memo: "ガラスとルーバー、石材が調和する端正な展示館。", photos: [] },
-      { id: 7, series: "京都編1", name: "清水寺 本堂", architect: "徳川家光（再建）", year: 1633, area: "東山区", lat: 34.9949, lng: 135.7850, memo: "急斜面にせり出す懸造（舞台）で知られる寺院建築。", photos: [] },
-      { id: 8, series: "京都編1", name: "建仁寺 方丈", architect: "不詳", year: 1599, area: "東山区", lat: 35.0005, lng: 135.7745, memo: "京都最古の禅寺にある方丈建築と庭園。", photos: [] },
-      { id: 9, series: "京都編1", name: "祇園甲部歌舞練場", architect: "大林組", year: 1913, area: "東山区", lat: 35.0029, lng: 135.7758, memo: "伝統的な意匠を取り入れた花街の劇場建築。", photos: [] },
-      { id: 10, series: "京都編1", name: "南座", architect: "大林組（改修）", year: 1929, area: "東山区", lat: 35.0034, lng: 135.7751, memo: "桃山風破風造の正面構えが印象的な歌舞伎劇場。", photos: [] },
-      { id: 11, series: "京都編1", name: "先斗町歌舞練場", architect: "木村得三郎", year: 1927, area: "中京区", lat: 35.0049, lng: 135.7712, memo: "鴨川沿いに建つ数寄屋風の佇まいを見せる劇場。", photos: [] },
-      { id: 12, series: "京都編1", name: "高瀬川一之船入", architect: "角倉了以", year: 1611, area: "中京区", lat: 35.0063, lng: 135.7703, memo: "高瀬舟の荷揚げ場として築かれた水運遺構。", photos: [] },
-      { id: 13, series: "京都編1", name: "1928ビル（旧京都毎日新聞社）", architect: "武田五一", year: 1928, area: "中京区", lat: 35.0085, lng: 135.7667, memo: "アール・デコ調の装飾が魅力の近代建築。", photos: [] },
-      { id: 14, series: "京都編1", name: "京都文化博物館 別館", architect: "辰野金吾・長野宇平治", year: 1906, area: "中京区", lat: 35.0092, lng: 135.7623, memo: "赤レンガに花崗岩を組み合わせた旧日本銀行京都支店。", photos: [] },
-      { id: 15, series: "京都編1", name: "中京郵便局", architect: "吉野繁夫", year: 1902, area: "中京区", lat: 35.0103, lng: 135.7634, memo: "煉瓦造の重厚な外観を残す歴史的郵便局舎。", photos: [] },
+      // ==================== 京都編1（洛北エリア：15件） ====================
+      { id: 1, series: "京都編1", orderInSeries: "1", name: "鈍考 donkou / 喫茶 芳 Kissa Fang", architect: "堀部安嗣", architectKeys: ["堀部安嗣"], year: 2023, yearLabel: "2023年竣工", area: "左京区", lat: 35.0631, lng: 135.7995, memo: "深い軒が作る影とプロポーションが視覚的な平穏をもたらす空間。本と珈琲、建築に浸れる。", photos: [] },
+      { id: 2, series: "京都編1", orderInSeries: "2", name: "瑠璃光院", architect: "不詳", architectKeys: [], year: 1926, yearLabel: "大正末期〜昭和初期造営", area: "左京区", lat: 35.0659, lng: 135.8105, memo: "数寄屋造りの建物から眺める瑠璃の庭。2階の窓枠が景色を絵画のように切り取る。", photos: [] },
+      { id: 3, series: "京都編1", orderInSeries: "3", name: "国立京都国際会館", architect: "大谷幸夫", architectKeys: ["大谷幸夫"], year: 1966, yearLabel: "1966年竣工", area: "左京区", lat: 35.0695, lng: 135.7847, memo: "山並みに合わせた斜めの造形が自然と力強く応答する、現代の神殿のような巨大建築。", photos: [] },
+      { id: 4, series: "京都編1", orderInSeries: "4", name: "ザ・プリンス 京都宝ヶ池", architect: "村野藤吾", architectKeys: ["村野藤吾"], year: 1986, yearLabel: "1986年竣工", area: "左京区", lat: 35.0652, lng: 135.7863, memo: "円形を基調とした柔らかな曲線と繊細なディテールで包み込む、村野藤吾晩年の傑作ホテル。", photos: [] },
+      { id: 5, series: "京都編1", orderInSeries: "5", name: "圓通寺", architect: "不詳", architectKeys: [], year: 1639, yearLabel: "江戸時代初期造営", area: "左京区", lat: 35.0657, lng: 135.7704, memo: "生垣を額縁に見立て比叡山を取り込む借景庭園の最高峰。杉の幹が垂直のグリッドとなる。", photos: [] },
+      { id: 6, series: "京都編1", orderInSeries: "6", name: "修学院離宮", architect: "後水尾上皇", architectKeys: ["後水尾上皇"], year: 1659, yearLabel: "1659年造営", area: "左京区", lat: 35.0532, lng: 135.8003, memo: "上・中・下の3つの茶屋からなる広大な離宮。浴龍池回遊時の視界の絞りと開放が見事。", photos: [] },
+      { id: 7, series: "京都編1", orderInSeries: "7", name: "無光虹（旧修学院の家Ⅱ）", architect: "高松伸", architectKeys: ["高松伸"], year: 1985, yearLabel: "1985年竣工", area: "左京区", lat: 35.0525, lng: 135.7897, memo: "ポストモダン建築を牽引した高松伸の初期住宅がアートカフェ・ギャラリーとして再生。", photos: [] },
+      { id: 8, series: "京都編1", orderInSeries: "8", name: "詩仙堂", architect: "石川丈山", architectKeys: ["石川丈山"], year: 1641, yearLabel: "1641年造営", area: "左京区", lat: 35.0432, lng: 135.7966, memo: "引き算の美学が宿る山荘跡。低い目線の縁側が庭との一体感を強め、ししおどしが響く。", photos: [] },
+      { id: 9, series: "京都編1", orderInSeries: "9", name: "下鴨神社（賀茂御祖神社）", architect: "不詳", architectKeys: [], year: 1863, yearLabel: "古代より鎮座／現本殿1863年造替", area: "左京区", lat: 35.0391, lng: 135.7730, memo: "糺の森のアプローチ自体が壮大な空間装置。朱塗りの社殿と原生林の深い緑の対比が美しい。", photos: [] },
+      { id: 10, series: "京都編1", orderInSeries: "10", name: "旧三井家下鴨別邸", architect: "不詳", architectKeys: [], year: 1925, yearLabel: "1925年竣工（主屋）", area: "左京区", lat: 35.0329, lng: 135.7729, memo: "3階建ての望楼を持つ近代和風建築。庭園と一体化した1階の開放的な座敷空間が優雅。", photos: [] },
+      { id: 11, series: "京都編1", orderInSeries: "11", name: "陶板名画の庭", architect: "安藤忠雄", architectKeys: ["安藤忠雄"], year: 1994, yearLabel: "1994年竣工", area: "左京区", lat: 35.0503, lng: 135.7647, memo: "コンクリート壁と水、交差するスロープが織りなす屋外絵画庭園。光と影の演出が濃密。", photos: [] },
+      { id: 12, series: "京都編1", orderInSeries: "12", name: "京都府立植物園", architect: "不詳", architectKeys: [], year: 1924, yearLabel: "1924年開園／観覧温室1992年竣工", area: "左京区", lat: 35.0487, lng: 135.7623, memo: "日本最古の公立総合植物園。池に浮かぶような幾何学デザインの巨大な観覧温室が見どころ。", photos: [] },
+      { id: 13, series: "京都編1", orderInSeries: "13", name: "京都工芸繊維大学 美術工芸資料館", architect: "不詳", architectKeys: [], year: 1981, yearLabel: "1981年竣工", area: "左京区", lat: 35.0493, lng: 135.7819, memo: "村野藤吾の膨大な設計図面等を収蔵。質の高い建築企画展が開かれる建築好きの聖地。", photos: [] },
+      { id: 14, series: "京都編1", orderInSeries: "14", name: "北村美術館・四君子苑", architect: "吉田五十八（母屋改築）／北村捨次郎（茶室など）", architectKeys: ["吉田五十八", "北村捨次郎"], year: 1963, yearLabel: "1963年母屋改築／1944年茶室など", area: "上京区", lat: 35.0258, lng: 135.7695, memo: "近代数寄屋の巨匠・吉田五十八による「すっきり見せる」ための執念が宿る旧邸宅。※春秋限定公開", photos: [] },
+      { id: 15, series: "京都編1", orderInSeries: "15", name: "三千院", architect: "不詳", architectKeys: [], year: 782, yearLabel: "延暦年間（782〜806年）創建", area: "左京区（大原）", lat: 35.1197, lng: 135.8346, memo: "苔庭「有清園」の中に往生極楽院が佇む。阿弥陀三尊像を納める船底天井の工夫も印象的。", photos: [] },
 
-      { id: 16, series: "京都編2", name: "二条城 二の丸御殿", architect: "不詳", year: 1603, area: "中京区", lat: 35.0142, lng: 135.7482, memo: "書院造の粋を集めた障壁画と鴬張りの廊下。", photos: [] },
-      { id: 17, series: "京都編2", name: "京都府庁旧本館", architect: "松室重光", year: 1904, area: "上京区", lat: 35.0238, lng: 135.7568, memo: "現存する日本最古の官公庁舎のひとつ。", photos: [] },
-      { id: 18, series: "京都御所", name: "京都御所 紫宸殿", architect: "不詳", year: 1855, area: "上京区", lat: 35.0254, lng: 135.7621, memo: "檜皮葺と白砂の庭が静謐な宮廷建築。", photos: [] },
-      { id: 19, series: "京都編2", name: "同志社大学 アーモスト館", architect: "J.M.ガーディナー", year: 1932, area: "上京区", lat: 35.0293, lng: 135.7595, memo: "ツタが絡まる石積みの落ち着いたキャンパス建築。", photos: [] },
-      { id: 20, series: "京都編2", name: "同志社大学 クラーク記念館", architect: "J.M.ガーディナー", year: 1893, area: "上京区", lat: 35.0301, lng: 135.7598, memo: "ゴシック風の尖塔と赤レンガが印象的な礼拝堂。", photos: [] },
-      { id: 21, series: "京都編2", name: "上賀茂神社 本殿・権殿", architect: "不詳", year: 1863, area: "北区", lat: 35.0604, lng: 135.7524, memo: "流造の社殿と立砂・細殿の配置が美しい神社。", photos: [] },
-      { id: 22, series: "京都編2", name: "下鴨神社 本殿", architect: "不詳", year: 1863, area: "左京区", lat: 35.0391, lng: 135.7730, memo: "糺の森の奥に鎮座する式年遷宮の歴史を持つ社殿。", photos: [] },
-      { id: 23, series: "京都編2", name: "銀閣寺 観音殿", architect: "足利義政", year: 1489, area: "左京区", lat: 35.0270, lng: 135.7982, memo: "上下二層の東山文化を代表する楼閣建築。", photos: [] },
-      { id: 24, series: "京都編2", name: "法然院 山門・方丈", architect: "不詳", year: 1680, area: "左京区", lat: 35.0266, lng: 135.7966, memo: "茅葺の山門と白砂壇が静かな佇まいを見せる。", photos: [] },
-      { id: 25, series: "京都編2", name: "哲学の道沿い 駒井家住宅", architect: "W.M.ヴォーリズ", year: 1927, area: "左京区", lat: 35.0235, lng: 135.7955, memo: "和と洋が自然に溶け込むヴォーリズ設計の住宅。", photos: [] },
-      { id: 26, series: "京都編2", name: "南禅寺 三門", architect: "藤堂高虎（再建）", year: 1628, area: "左京区", lat: 35.0112, lng: 135.7937, memo: "「絶景かな」の言葉でも知られる巨大な禅宗山門。", photos: [] },
-      { id: 27, series: "京都編2", name: "南禅寺 水路閣", architect: "田辺朔郎", year: 1890, area: "左京区", lat: 35.0117, lng: 135.7947, memo: "琵琶湖疏水のレンガ造アーチ橋が境内に溶け込む。", photos: [] },
-      { id: 28, series: "京都編2", name: "蹴上インクライン", architect: "田辺朔郎", year: 1891, area: "左京区", lat: 35.0092, lng: 135.7885, memo: "高低差を舟で越えるために敷かれた傾斜鉄道跡。", photos: [] },
-      { id: 29, series: "京都編2", name: "京都市京セラ美術館", architect: "前川國男・青木淳／西澤徹夫", year: 1933, area: "左京区", lat: 35.0124, lng: 135.7819, memo: "帝冠様式の本館とガラスリボンの新館が融合。", photos: [] },
-      { id: 30, series: "京都編2", name: "ロームシアター京都", architect: "香山壽夫", year: 2016, area: "左京区", lat: 35.0145, lng: 135.7805, memo: "岡崎の文化ゾーンに開かれた重厚な劇場建築。", photos: [] },
+      // ==================== 京都編2（北白川〜岡崎エリア：10件） ====================
+      { id: 16, series: "京都編2", orderInSeries: "1", name: "京都芸術大学（至誠館など）", architect: "隈研吾 ほか", architectKeys: ["隈研吾"], year: 2010, yearLabel: "至誠館：2010年竣工", area: "左京区", lat: 35.0332, lng: 135.7876, memo: "山の斜面をそのままキャンパスにした起伏。山へ向かって登る巨大な階段のシークエンスが圧巻。", photos: [] },
+      { id: 17, series: "京都編2", orderInSeries: "2", name: "大文字山", architect: "—", architectKeys: [], year: null, yearLabel: "自然・景観", area: "左京区", lat: 35.0253, lng: 135.8056, memo: "火床から京都市街を一望できるスポット。碁盤の目の街並みと盆地の骨格を肌で理解できる。", photos: [] },
+      { id: 18, series: "京都編2", orderInSeries: "3", name: "銀閣寺（慈照寺）", architect: "足利義政（造営）", architectKeys: ["足利義政"], year: 1490, yearLabel: "1490年建立", area: "左京区", lat: 35.0270, lng: 135.7982, memo: "華美な装飾を削ぎ落とした東山文化の最高峰。銀沙灘と向月台は月明かりを反射するレフ板のよう。", photos: [] },
+      { id: 19, series: "京都編2", orderInSeries: "4", name: "法然院", architect: "不詳", architectKeys: [], year: 1680, yearLabel: "1680年再興", area: "左京区", lat: 35.0229, lng: 135.7966, memo: "茅葺の山門と白砂壇が結界を作る。静けさという環境を作る器に徹した名刹。", photos: [] },
+      { id: 20, series: "京都編2", orderInSeries: "5", name: "茂庵（もあん）", architect: "谷川茂次郎（造営）", architectKeys: ["谷川茂次郎"], year: 1920, yearLabel: "1920年代建立", area: "左京区", lat: 35.0246, lng: 135.7867, memo: "吉田山山頂に建つ大正期のお茶室群を改装した木造カフェ。四方の木枠窓が街と森を切り取る。", photos: [] },
+      { id: 21, series: "京都編2", orderInSeries: "6", name: "京都市京セラ美術館", architect: "原設計：前田健二郎／改修：青木淳・西澤徹夫", architectKeys: ["前田健二郎", "青木淳", "西澤徹夫"], year: 1933, yearLabel: "1933年竣工／2020年改修竣工", area: "左京区", lat: 35.0124, lng: 135.7836, memo: "帝冠様式の足元を掘り下げガラス・リボンを挿入。過去と対話し未来へ繋ぐリノベーションの傑作。", photos: [] },
+      { id: 22, series: "京都編2", orderInSeries: "7", name: "京都国立近代美術館", architect: "槇文彦", architectKeys: ["槇文彦"], year: 1986, yearLabel: "1986年竣工", area: "左京区", lat: 35.0127, lng: 135.7824, memo: "シンメトリーでグリッド状の端正なファサード。柔らかな自然光と品格あるディテールが光る。", photos: [] },
+      { id: 23, series: "京都編2", orderInSeries: "8", name: "細見美術館", architect: "大江匡", architectKeys: ["大江匡"], year: 1998, yearLabel: "1998年竣工", area: "左京区", lat: 35.0122, lng: 135.7809, memo: "ボリュームの大半を地下に埋め、中央のサンクンガーデンで光と風を届ける。路地のような回遊性。", photos: [] },
+      { id: 24, series: "京都編2", orderInSeries: "9", name: "ロームシアター京都（旧京都会館）", architect: "原設計：前川國男／改修：香山壽夫建築研究所", architectKeys: ["前川國男", "香山壽夫"], year: 1960, yearLabel: "1960年竣工／2016年改修竣工", area: "左京区", lat: 35.0145, lng: 135.7817, memo: "深く伸びる大庇とピロティが街の広場として機能。前川建築の力強さと優しさが色濃く残る。", photos: [] },
+      { id: 25, series: "京都編2", orderInSeries: "10", name: "平安神宮", architect: "伊東忠太・木子清敬・武田五一 ほか", architectKeys: ["伊東忠太", "木子清敬", "武田五一"], year: 1895, yearLabel: "1895年建立", area: "左京区", lat: 35.0160, lng: 135.7824, memo: "平安京の朝堂院を約8分の5で再現。岡崎の都市軸を決定づける規格外のスケール感。", photos: [] },
 
-      { id: 31, series: "京都編3", name: "京都府立図書館", architect: "武田五一", year: 1909, area: "左京区", lat: 35.0158, lng: 135.7809, memo: "岡崎エリアの近代建築群の一翼を担う図書館。", photos: [] },
-      { id: 32, series: "京都編3", name: "平安神宮 大極殿", architect: "木子清敬", year: 1895, area: "左京区", lat: 35.0160, lng: 135.7824, memo: "平安京朝堂院を模した朱塗りの大極殿と応天門。", photos: [] },
-      { id: 33, series: "京都編3", name: "無鄰菴 母屋・洋館", architect: "七代目小川治兵衛（庭）", year: 1896, area: "左京区", lat: 35.0118, lng: 135.7886, memo: "疏水を引き込んだ庭と近代数寄屋の住宅。", photos: [] },
-      { id: 34, series: "京都編3", name: "対龍山荘", architect: "七代目小川治兵衛", year: 1896, area: "左京区", lat: 35.0125, lng: 135.7915, memo: "東山の借景と滝の音を楽しめる庭園建築。", photos: [] },
-      { id: 35, series: "京都編3", name: "京都大学 百周年時計台記念館", architect: "浦辺鎮太郎", year: 1925, area: "左京区", lat: 35.0262, lng: 135.7809, memo: "キャンパスの象徴として親しまれる時計台建築。", photos: [] },
-      { id: 36, series: "京都編3", name: "京都大学 総合博物館", architect: "増田友也", year: 1997, area: "左京区", lat: 35.0273, lng: 135.7812, memo: "学術標本の展示空間を収めた大学博物館。", photos: [] },
-      { id: 37, series: "京都編3", name: "吉田寮（旧棟）", architect: "不詳", year: 1913, area: "左京区", lat: 35.0246, lng: 135.7828, memo: "長い歴史を重ねてきた木造の学生自治寮。", photos: [] },
-      { id: 38, series: "京都編3", name: "金閣寺 鹿苑寺", architect: "足利義満", year: 1397, area: "北区", lat: 35.0394, lng: 135.7292, memo: "鏡湖池に映える金箔貼りの三層楼閣建築。", photos: [] },
-      { id: 39, series: "京都編3", name: "龍安寺 方丈・石庭", architect: "不詳", year: 1499, area: "右京区", lat: 35.0345, lng: 135.7183, memo: "白砂に十五の石を配した枯山水庭園と方丈。", photos: [] },
-      { id: 40, series: "京都編3", name: "仁和寺 御影堂・五重塔", architect: "不詳", year: 1644, area: "右京区", lat: 35.0311, lng: 135.7138, memo: "御室桜とともに知られる門跡寺院の伽藍。", photos: [] },
-      { id: 41, series: "京都編3", name: "妙心寺 法堂・大方丈", architect: "不詳", year: 1656, area: "右京区", lat: 35.0226, lng: 135.7204, memo: "広大な境内に多くの塔頭を擁する禅宗寺院。", photos: [] },
-      { id: 42, series: "京都編3", name: "太秦広隆寺 霊宝殿", architect: "不詳", year: 1953, area: "右京区", lat: 35.0137, lng: 135.7066, memo: "弥勒菩薩半跏思惟像をはじめとする仏像を安置。", photos: [] },
-      { id: 43, series: "京都編3", name: "天龍寺 方丈・曹源池庭園", architect: "夢窓疎石（庭）", year: 1339, area: "右京区", lat: 35.0157, lng: 135.6736, memo: "嵐山の山並みを借景とする禅宗寺院の庭園。", photos: [] },
-      { id: 44, series: "京都編3", name: "渡月橋", architect: "不詳", year: 1934, area: "右京区", lat: 35.0132, lng: 135.6776, memo: "桂川にかかる木橋とコンクリート橋脚の景観。", photos: [] },
-      { id: 45, series: "京都編3", name: "大河内山荘", architect: "大河内傳次郎", year: 1931, area: "右京区", lat: 35.0185, lng: 135.6675, memo: "嵐山一帯を見渡す回遊式庭園と数寄屋建築。", photos: [] },
+      // ==================== 京都編3（蹴上・南禅寺〜山科エリア：12件） ====================
+      { id: 26, series: "京都編3", orderInSeries: "1", name: "南禅寺", architect: "不詳", architectKeys: [], year: 1291, yearLabel: "1291年創建（現三門1628年再建）", area: "左京区", lat: 35.0112, lng: 135.7937, memo: "京都五山の別格。極太円柱と詰組・二重扇垂木による巨大な三門は古の職人技術の極致。", photos: [] },
+      { id: 27, series: "京都編3", orderInSeries: "2", name: "南禅寺 水路閣", architect: "田辺朔郎", architectKeys: ["田辺朔郎"], year: 1888, yearLabel: "1888年竣工", area: "左京区", lat: 35.0113, lng: 135.7944, memo: "古刹の境内に現れるレンガ造アーチ橋。異物だった近代インフラが時間を経て風景に定着。", photos: [] },
+      { id: 28, series: "京都編3", orderInSeries: "3", name: "蹴上発電所導水管", architect: "田辺朔郎 ほか", architectKeys: ["田辺朔郎"], year: 1891, yearLabel: "1891年運用開始", area: "左京区", lat: 35.0096, lng: 135.7905, memo: "琵琶湖疏水と蹴上の落差を利用した日本初の事業用水力発電の産業遺産。巨大な鉄管が伸びる。", photos: [] },
+      { id: 29, series: "京都編3", orderInSeries: "4", name: "無鄰菴（むりんあん）", architect: "作庭：七代目小川治兵衛", architectKeys: ["七代目小川治兵衛"], year: 1896, yearLabel: "1896年完成", area: "左京区", lat: 35.0114, lng: 135.7873, memo: "東山を借景とし疏水の水を浅い流れで引き込んだ、近代日本庭園のあり方を決定づけた傑作。", photos: [] },
+      { id: 30, series: "京都編3", orderInSeries: "5", name: "流響院（りゅうきょういん）", architect: "作庭：七代目小川治兵衛", architectKeys: ["七代目小川治兵衛"], year: 1900, yearLabel: "明治時代竣工", area: "左京区", lat: 35.0145, lng: 135.7909, memo: "南禅寺界隈別荘群の最高峰の呼び声高い名園。山奥の渓流を切り取ったような自然な流れ。※撮影禁止", photos: [] },
+      { id: 31, series: "京都編3", orderInSeries: "6", name: "對龍山荘（たいりゅうさんそう）", architect: "作庭：七代目小川治兵衛", architectKeys: ["七代目小川治兵衛"], year: 1901, yearLabel: "1901年頃完成", area: "左京区", lat: 35.0124, lng: 135.7913, memo: "疏水の水を豪快に引き込んだ水の庭。数寄屋建築と庭園、水の音や湿り気まで一体に設計。", photos: [] },
+      { id: 32, series: "京都編3", orderInSeries: "7", name: "怡園（旧細川家別邸）", architect: "作庭：七代目小川治兵衛", architectKeys: ["七代目小川治兵衛"], year: 1893, yearLabel: "1893年頃完成", area: "左京区", lat: 35.0138, lng: 135.7918, memo: "旧細川家別邸の名園（通常非公開）。通りに面した門構えや土塀からも格式と静謐さが伝わる。", photos: [] },
+      { id: 33, series: "京都編3", orderInSeries: "8", name: "ブルーボトルコーヒー 京都カフェ", architect: "長坂常 / スキーマ建築計画", architectKeys: ["長坂常"], year: 2018, yearLabel: "2018年竣工", area: "左京区", lat: 35.0122, lng: 135.7894, memo: "築100年超の二軒長屋を改修。重厚な木造骨組みと透明なガラス、砂利床が現代の庭のように佇む。", photos: [] },
+      { id: 34, series: "京都編3", orderInSeries: "9", name: "泉屋博古館（せんおくはくこかん）", architect: "日建設計", architectKeys: ["日建設計"], year: 1970, yearLabel: "1970年開館／2002年新館増築", area: "左京区", lat: 35.0185, lng: 135.7927, memo: "鹿ヶ谷にひっそり建つ住友家コレクションの美術館。質の高い素材と端正なディテールのモダニズム。", photos: [] },
+      { id: 35, series: "京都編3", orderInSeries: "10", name: "日向大神宮（ひむかいだいじんぐう）", architect: "不詳", architectKeys: [], year: 485, yearLabel: "伝・第23代顕宗天皇時代創建", area: "山科区", lat: 35.0044, lng: 135.7966, memo: "「京の伊勢」と呼ばれる神明造の社殿。装飾を廃した原始的で簡潔な木造建築の純度を体感。", photos: [] },
+      { id: 36, series: "京都編3", orderInSeries: "11", name: "ヴィラ九条山", architect: "加藤邦男", architectKeys: ["加藤邦男"], year: 1992, yearLabel: "1992年竣工", area: "山科区", lat: 35.0039, lng: 135.7937, memo: "東山の山腹に突き出すフランス政府所有のレジデンス。緑を背景に白い抽象造形が際立つ。", photos: [] },
+      { id: 37, series: "京都編3", orderInSeries: "12", name: "旧栗原邸（旧鶴巻邸）", architect: "本野精吾", architectKeys: ["本野精吾"], year: 1929, yearLabel: "1929年竣工", area: "山科区", lat: 34.9963, lng: 135.8027, memo: "特殊なコンクリートブロック構法によるモダニズム黎明期の貴重な遺構。鬱蒼とした緑の中に神殿のように佇む。", photos: [] },
 
-      { id: 46, series: "京都編4", name: "桂離宮 古書院・月波楼", architect: "八条宮智仁親王・智忠親王", year: 1620, area: "西京区", lat: 34.9784, lng: 135.7061, memo: "日本建築と庭園美の到達点として語られる離宮。", photos: [] },
-      { id: 47, series: "京都編4", name: "苔寺（西芳寺） 湘南亭・庭園", architect: "夢窓疎石", year: 1339, area: "西京区", lat: 34.9922, lng: 135.6834, memo: "一面の苔と池泉回遊式庭園が織りなす静寂。", photos: [] },
-      { id: 48, series: "京都編4", name: "鈴虫寺（華厳寺）", architect: "鳳潭", year: 1723, area: "西京区", lat: 34.9896, lng: 135.6797, memo: "幸福地蔵と一年中鈴虫の声が響く空間で知られる。", photos: [] },
-      { id: 49, series: "京都編4", name: "醍醐寺 五重塔・金堂", architect: "不詳", year: 951, area: "伏見区", lat: 34.9508, lng: 135.8195, memo: "京都府内に現存する最古の木造建築である五重塔。", photos: [] },
-      { id: 50, series: "京都編4", name: "伏見稲荷大社 本殿・千本鳥居", architect: "不詳", year: 1499, area: "伏見区", lat: 34.9671, lng: 135.7727, memo: "稲荷山へと続く無数の朱色の鳥居と社殿群。", photos: [] },
-      { id: 51, series: "京都編4", name: "寺田屋", architect: "不詳", year: 1867, area: "伏見区", lat: 34.9288, lng: 135.7647, memo: "幕末の史跡として知られる伏見の船宿。", photos: [] },
-      { id: 52, series: "京都編4", name: "月桂冠大倉記念館", architect: "不詳", year: 1909, area: "伏見区", lat: 34.9255, lng: 135.7623, memo: "伏見の酒造りの歴史と酒蔵建築を伝える記念館。", photos: [] },
-      { id: 53, series: "京都編4", name: "京都府立植物園 観覧温室", architect: "京都府建築課", year: 1992, area: "左京区", lat: 35.0472, lng: 135.7618, memo: "広大な植物園の中心に建つ大型のガラス温室。", photos: [] },
-      { id: 54, series: "京都編4", name: "京都コンサートホール", architect: "磯崎新", year: 1995, area: "左京区", lat: 35.0462, lng: 135.7634, memo: "北山通に面する特徴的な幾何学形態のホール。", photos: [] },
-      { id: 55, series: "京都編4", name: "北山駅・周辺建築群", architect: "各種", year: 1990, area: "北区", lat: 35.0507, lng: 135.7595, memo: "北山通沿いに連なる現代建築・ショップ群。", photos: [] },
-      { id: 56, series: "京都編4", name: "宝ヶ池公園 憩いの家", architect: "不詳", year: 1970, area: "左京区", lat: 35.0598, lng: 135.7875, memo: "池と緑に囲まれた公園内の建築スポット。", photos: [] },
-      { id: 57, series: "京都編4", name: "国立京都国際会館", architect: "大谷幸夫", year: 1966, area: "左京区", lat: 35.0695, lng: 135.7847, memo: "合掌造や日本建築の架構を現代的に昇華した名作。", photos: [] },
-      { id: 58, series: "京都編4", name: "曼殊院門跡 書院・庭園", architect: "良尚法親王", year: 1656, area: "左京区", lat: 35.0545, lng: 135.8058, memo: "小堀遠州ゆかりの枯山水庭園と数寄屋風の書院。", photos: [] },
-      { id: 59, series: "京都編4", name: "詩仙堂", architect: "石川丈山", year: 1641, area: "左京区", lat: 35.0432, lng: 135.7975, memo: "ししおどしの音と紅葉・庭園が調和する山荘。", photos: [] },
-      { id: 60, series: "京都編4", name: "修学院離宮 上の御茶屋・隣雲亭", architect: "後水尾上皇", year: 1659, area: "左京区", lat: 35.0532, lng: 135.7903, memo: "広大な借景庭園と御茶屋が連なる山荘建築。", photos: [] },
+      // ==================== 京都編4（東山区：18件） ====================
+      { id: 38, series: "京都編4", orderInSeries: "1", name: "ねじりまんぽ / 蹴上インクライン / 蹴上疏水公園", architect: "田辺朔郎", architectKeys: ["田辺朔郎"], year: 1890, yearLabel: "1890年竣工", area: "東山区", lat: 35.0091, lng: 135.7897, memo: "琵琶湖疏水の大規模インフラ群。斜めに煉瓦を積んだねじりまんぽの幾何学美と土木構造物の力強さ。", photos: [] },
+      { id: 39, series: "京都編4", orderInSeries: "2", name: "ウェスティン都ホテル京都 数寄屋風別館 佳水園", architect: "村野藤吾／改修：NAP ほか", architectKeys: ["村野藤吾", "NAP"], year: 1960, yearLabel: "1960年竣工〜順次増改築", area: "東山区", lat: 35.0085, lng: 135.7881, memo: "自然の傾斜地に雁行配置された数寄屋建築の傑作。極限まで薄い銅板葺きのむくり屋根が官能的。", photos: [] },
+      { id: 40, series: "京都編4", orderInSeries: "3", name: "ダーワ・悠洛 京都", architect: "日建設計／インテリア：橋本夕紀夫", architectKeys: ["日建設計", "橋本夕紀夫"], year: 2019, yearLabel: "2019年竣工", area: "東山区", lat: 35.0092, lng: 135.7726, memo: "三条大橋たもとのホテル。地下吹き抜けの竹林ガーデンなど大正ロマンをコンセプトとした空間。", photos: [] },
+      { id: 41, series: "京都編4", orderInSeries: "4", name: "HiTOHi（com-ion）", architect: "DAY .inc", architectKeys: ["DAY .inc"], year: 2025, yearLabel: "2025年改修", area: "東山区", lat: 35.0086, lng: 135.7779, memo: "白川近くの町家を改装したオールデイダイニング。古い木造骨格と土壁を残した小規模リノベの最適解。", photos: [] },
+      { id: 42, series: "京都編4", orderInSeries: "5", name: "Cafe Loto Kyoto", architect: "堀部安嗣", architectKeys: ["堀部安嗣"], year: 2023, yearLabel: "2023年竣工", area: "東山区", lat: 35.0089, lng: 135.7745, memo: "三条の細い路地に溶け込む極小スケールのコーヒースタンド。無駄を削ぎ落とした親密な空間。", photos: [] },
+      { id: 43, series: "京都編4", orderInSeries: "6", name: "ZENBI-鍵善良房-KAGIZEN ART MUSEUM", architect: "辻村久信", architectKeys: ["辻村久信"], year: 2021, yearLabel: "2021年竣工", area: "東山区", lat: 35.0033, lng: 135.7747, memo: "祇園の老舗和菓子店が手掛けた私設美術館。祇園の町並みに配慮した外観と黒漆・土壁の内装。", photos: [] },
+      { id: 44, series: "京都編4", orderInSeries: "7", name: "サウナ＆カプセルホテル ルーマプラザ", architect: "不詳", architectKeys: [], year: 2023, yearLabel: "2023年リニューアル竣工", area: "東山区", lat: 35.0041, lng: 135.7740, memo: "過密な祇園の中心で空へ視線が抜ける開放的な屋上外気浴スペースを確保した都市型サウナ。", photos: [] },
+      { id: 45, series: "京都編4", orderInSeries: "8", name: "Hotel 侑楽 京八坂", architect: "内装：石井建築設計事務所", architectKeys: ["石井建築設計事務所"], year: 2022, yearLabel: "2022年竣工", area: "東山区", lat: 35.0046, lng: 135.7810, memo: "八坂神社近くの高台にあるスモールラグジュアリーホテル。左官壁や名栗加工など伝統素材を配置。", photos: [] },
+      { id: 46, series: "京都編4", orderInSeries: "9", name: "SOWAKA", architect: "魚谷繁礼", architectKeys: ["魚谷繁礼"], year: 2018, yearLabel: "2018年竣工", area: "東山区", lat: 35.0007, lng: 135.7798, memo: "元老舗料亭の数寄屋建築をホテルへリノベーション。既存中庭に面した改修部が特に美しい。", photos: [] },
+      { id: 47, series: "京都編4", orderInSeries: "10", name: "KYOTO BISTRO（Park Hyatt Kyoto）", architect: "竹中工務店／インテリア：トニーチー・スタジオ", architectKeys: ["竹中工務店", "トニーチー・スタジオ"], year: 2019, yearLabel: "2019年竣工", area: "東山区", lat: 34.9986, lng: 135.7808, memo: "二寧坂に面するPark Hyatt Kyotoの1階。厳格な景観条例に沿った外観と洗練されたモダン内装。", photos: [] },
+      { id: 48, series: "京都編4", orderInSeries: "11", name: "建仁寺 両足院", architect: "不詳", architectKeys: [], year: 1358, yearLabel: "鎌倉時代開山", area: "東山区", lat: 35.0005, lng: 135.7736, memo: "京都最古の禅寺・建仁寺の塔頭。厳格な方丈空間と静謐な枯山水庭園が一体となった空間体験。", photos: [] },
+      { id: 49, series: "京都編4", orderInSeries: "12", name: "清水寺", architect: "不詳", architectKeys: [], year: 1633, yearLabel: "本堂：1633年再建", area: "東山区", lat: 34.9949, lng: 135.7850, memo: "急峻な崖からせり出す懸造の本堂。釘を一本も使わず貫で連結したケヤキ柱のダイナミックな構造美。", photos: [] },
+      { id: 50, series: "京都編4", orderInSeries: "13", name: "産寧坂", architect: "—", architectKeys: [], year: null, yearLabel: "伝統的建造物群保存地区", area: "東山区", lat: 34.9974, lng: 135.7809, memo: "斜面に石段と町家が連続する街並み。高さや屋根勾配・素材の統一が生む都市空間の連続性。", photos: [] },
+      { id: 51, series: "京都編4", orderInSeries: "14", name: "EMBA KYOTO GRILL / 積翠園（Four Seasons Hotel Kyoto）", architect: "久米設計", architectKeys: ["久米設計"], year: 2016, yearLabel: "2016年竣工", area: "東山区", lat: 34.9912, lng: 135.7763, memo: "約800年の歴史を持つ名庭・積翠園を囲むホテル内レストラン。庭園と現代建築のスケール感を考える場。", photos: [] },
+      { id: 52, series: "京都編4", orderInSeries: "15", name: "京都国立博物館 平成知新館", architect: "谷口吉生", architectKeys: ["谷口吉生"], year: 2014, yearLabel: "2014年竣工", area: "東山区", lat: 34.9899, lng: 135.7732, memo: "明治古都館と鮮やかに対比するモダニズムの到達点。極細サッシと揃う目地、一切のノイズを許さない美学。", photos: [] },
+      { id: 53, series: "京都編4", orderInSeries: "16", name: "河井寛次郎記念館", architect: "河井寛次郎", architectKeys: ["河井寛次郎"], year: 1937, yearLabel: "1937年竣工", area: "東山区", lat: 34.9935, lng: 135.7734, memo: "陶芸家・河井寛次郎の自宅兼工房。民家様式の堅牢な木造と役割ある開口部、用の美が体現された空間。", photos: [] },
+      { id: 54, series: "京都編4", orderInSeries: "17", name: "東福寺", architect: "不詳", architectKeys: [], year: 1425, yearLabel: "三門：1425年竣工", area: "東山区", lat: 34.9762, lng: 135.7737, memo: "現存日本最古の三門の圧倒的な木組み、通天橋、重森三玲作庭のモダンな方丈庭園まで見どころ満載。", photos: [] },
+      { id: 55, series: "京都編4", orderInSeries: "18", name: "泉涌寺（せんにゅうじ）", architect: "不詳", architectKeys: [], year: 1668, yearLabel: "仏殿：1668年再建", area: "東山区", lat: 34.9781, lng: 135.7811, memo: "参道を下った先に伽藍が広がる珍しい「下り参道」。禅宗様の反りの強い屋根を持つ仏殿が厳か。", photos: [] },
 
-      { id: 61, series: "京都編5", name: "大徳寺 方丈・唐門", architect: "不詳", year: 1635, area: "北区", lat: 35.0437, lng: 135.7460, memo: "茶の湯文化と深く結びつく禅宗寺院の伽藍。", photos: [] },
-      { id: 62, series: "京都編5", name: "大徳寺 大仙院", architect: "古岳宗亘", year: 1513, area: "北区", lat: 35.0446, lng: 135.7453, memo: "限られた空間に大河と大海を表現した枯山水。", photos: [] },
-      { id: 63, series: "京都編5", name: "今宮神社 本殿・拝殿", architect: "徳川綱吉（再建）", year: 1694, area: "北区", lat: 35.0454, lng: 135.7422, memo: "楼門と朱塗りの社殿が迎える地域の鎮守。", photos: [] },
-      { id: 64, series: "京都編5", name: "船岡山公園 建勲神社", architect: "不詳", year: 1910, area: "北区", lat: 35.0352, lng: 135.7443, memo: "京都市街を見渡せる丘陵に建つ神社建築。", photos: [] },
-      { id: 65, series: "京都編5", name: "西陣織会館", architect: "不詳", year: 1976, area: "上京区", lat: 35.0273, lng: 135.7459, memo: "西陣の織物文化を発信する拠点施設。", photos: [] },
-      { id: 66, series: "京都編5", name: "晴明神社", architect: "不詳", year: 2003, area: "上京区", lat: 35.0315, lng: 135.7534, memo: "五芒星の紋章と一条戻橋ゆかりの神社。", photos: [] },
-      { id: 67, series: "京都編5", name: "白峯神宮", architect: "木子清敬", year: 1886, area: "上京区", lat: 35.0334, lng: 135.7547, memo: "蹴鞠の守護神としても知られる神社建築。", photos: [] },
-      { id: 68, series: "京都編5", name: "京都市考古資料館", architect: "不詳", year: 1979, area: "上京区", lat: 35.0320, lng: 135.7495, memo: "平安京や京都の出土資料を展示する施設。", photos: [] },
-      { id: 69, series: "京都編5", name: "平野神社 本殿", architect: "不詳", year: 1624, area: "北区", lat: 35.0308, lng: 135.7310, memo: "平野造と呼ばれる独特の社殿形式を残す神社。", photos: [] },
-      { id: 70, series: "京都編5", name: "北野天満宮 本殿・拝殿", architect: "豊臣秀頼（造営）", year: 1607, area: "上京区", lat: 35.0311, lng: 135.7354, memo: "多彩な屋根構成と彫刻が目を引く八棟造の社殿。", photos: [] },
-      { id: 71, series: "京都編5", name: "京都中央信用金庫 旧厚生センター", architect: "村野藤吾", year: 1966, area: "中京区", lat: 35.0055, lng: 135.7602, memo: "村野藤吾らしい繊細なディテールが光る建築。", photos: [] },
-      { id: 72, series: "京都編5", name: "京都国際マンガミュージアム", architect: "京都府建築課（旧龍池小）", year: 1928, area: "中京区", lat: 35.0114, lng: 135.7600, memo: "旧小学校校舎を活かした文化・アーカイブ施設。", photos: [] },
-      { id: 73, series: "京都編5", name: "元離宮二条城 周辺町家群", architect: "不詳", year: 1920, area: "中京区", lat: 35.0125, lng: 135.7515, memo: "京町家の連なりと路地のスケール感が残る街並み。", photos: [] },
-      { id: 74, series: "京都編5", name: "島津製作所 創業記念資料館", architect: "西村好時", year: 1927, area: "中京区", lat: 35.0155, lng: 135.7575, memo: "木造レンガの趣を残す歴史的建築。", photos: [] },
-      { id: 75, series: "京都編5", name: "京都芸術センター", architect: "京都府建築課（旧明倫小）", year: 1931, area: "中京区", lat: 35.0044, lng: 135.7595, memo: "旧明倫小学校の校舎を活用した創作・交流拠点。", photos: [] },
+      // ==================== 京都編5（中京区：15件＋おまけ1件） ====================
+      { id: 56, series: "京都編5", orderInSeries: "1", name: "京都鳩居堂 本店", architect: "内藤廣", architectKeys: ["内藤廣"], year: 2020, yearLabel: "2020年竣工", area: "中京区", lat: 35.0108, lng: 135.7673, memo: "むくりのある瓦屋根と細い鉄骨・ガラスの対比。繊細な木材ルーバーとアーチ架構が温かな光を生む。", photos: [] },
+      { id: 57, series: "京都編5", orderInSeries: "2", name: "京都鳩居堂 第三店舗", architect: "内藤廣", architectKeys: ["内藤廣"], year: 2021, yearLabel: "2021年竣工", area: "中京区", lat: 35.0108, lng: 135.7676, memo: "本店中庭の真横。天窓と入口からの光がのこぎり状の内壁で反射する、荘厳で神秘的な空間。", photos: [] },
+      { id: 58, series: "京都編5", orderInSeries: "3", name: "京都市役所", architect: "武田五一（顧問）・中野進一／改修：日建設計", architectKeys: ["武田五一", "中野進一", "日建設計"], year: 1927, yearLabel: "1927年竣工／2021年改修", area: "中京区", lat: 35.0116, lng: 135.7681, memo: "西洋のクラシック骨格に東洋的ディテールを散りばめた名庁舎。大規模免震改修により保存再生。", photos: [] },
+      { id: 59, series: "京都編5", orderInSeries: "4", name: "ホテルオークラ京都", architect: "三菱地所設計", architectKeys: ["三菱地所設計"], year: 1994, yearLabel: "1994年竣工", area: "中京区", lat: 35.0106, lng: 135.7695, memo: "当時の景観論争を経て都市に定着したマッシブな建築。本物の石と木が高精度に納まる上品なロビー。", photos: [] },
+      { id: 60, series: "京都編5", orderInSeries: "5", name: "by HULIC（旧立誠小学校）", architect: "竹中工務店", architectKeys: ["竹中工務店"], year: 2020, yearLabel: "2020年竣工", area: "中京区", lat: 35.0064, lng: 135.7703, memo: "番組小学校の既存RC骨格を残しホテル・商業施設へ再生。グラウンド跡の芝生広場が町に開かれる。", photos: [] },
+      { id: 61, series: "京都編5", orderInSeries: "6", name: "node hotel", architect: "UDS", architectKeys: ["UDS"], year: 2018, yearLabel: "2018年竣工", area: "中京区", lat: 35.0052, lng: 135.7554, memo: "アートコレクターの住まいがコンセプト。薄暗い打放しコンクリート空間に現代アートが浮かぶ。", photos: [] },
+      { id: 62, series: "京都編5", orderInSeries: "7", name: "新風館（旧京都中央電話局）", architect: "隈研吾・NTTファシリティーズ／原設計：吉田鉄郎", architectKeys: ["隈研吾", "NTTファシリティーズ", "吉田鉄郎"], year: 2020, yearLabel: "2020年竣工（原設計1926年）", area: "中京区", lat: 35.0094, lng: 135.7598, memo: "吉田鉄郎による大正のレンガ造名作を一部保存・改修し、木組みの増築部を加えた複合施設。", photos: [] },
+      { id: 63, series: "京都編5", orderInSeries: "8", name: "エースホテル 京都", architect: "隈研吾（外装）・Commune Design（内装）", architectKeys: ["隈研吾", "Commune Design"], year: 2020, yearLabel: "2020年竣工", area: "中京区", lat: 35.0096, lng: 135.7596, memo: "新風館内のホテルエリア。西洋と東洋が混ざり合うロビーの木組と、秘密基地のような客室。", photos: [] },
+      { id: 64, series: "京都編5", orderInSeries: "9", name: "カンデオホテルズ京都烏丸六角", architect: "東洋設計事務所・GARDE", architectKeys: ["東洋設計事務所", "GARDE"], year: 2021, yearLabel: "2021年竣工", area: "中京区", lat: 35.0074, lng: 135.7591, memo: "京都市登録有形文化財の旧伴家住宅をレセプション・ラウンジとして取り込んだホテル。", photos: [] },
+      { id: 65, series: "京都編5", orderInSeries: "10", name: "六曜社 地下店", architect: "不詳", architectKeys: [], year: 1950, yearLabel: "1950年開業", area: "中京区", lat: 35.0080, lng: 135.7690, memo: "狭い階段を下りた先の地下空間に、革張りソファやタイル装飾など昭和の空気が真空パックされた名喫茶。", photos: [] },
+      { id: 66, series: "京都編5", orderInSeries: "11", name: "京フレンチきしもと（KISHIMOTO）", architect: "不詳", architectKeys: [], year: 2002, yearLabel: "2002年オープン", area: "中京区", lat: 35.0067, lng: 135.7712, memo: "元お茶屋の建物を利用したフレンチ。鴨川の納涼床という仮設建築的体験が都市と自然の境界を溶かす。", photos: [] },
+      { id: 67, series: "京都編5", orderInSeries: "12", name: "千總本店", architect: "田根剛", architectKeys: ["田根剛"], year: 2020, yearLabel: "2020年竣工", area: "中京区", lat: 35.0087, lng: 135.7587, memo: "京友禅の老舗フラッグシップ。七宝文様をモチーフにした金属パネルが幾重にも重なる繊細なファサード。", photos: [] },
+      { id: 68, series: "京都編5", orderInSeries: "13", name: "京都国際マンガミュージアム（旧龍池小学校）", architect: "京都市営繕課／改修：京都市都市計画局公共建築部＋昭和設計", architectKeys: ["京都市営繕課", "昭和設計"], year: 1929, yearLabel: "1929年竣工／2006年改修竣工", area: "中京区", lat: 35.0116, lng: 135.7594, memo: "昭和初期の小学校校舎を文化施設へコンバージョンした先駆的事例。芝生グラウンドも開放的。", photos: [] },
+      { id: 69, series: "京都編5", orderInSeries: "14", name: "KYOTO SHIKIAMI CONCON シキアミコンコン", architect: "魚谷繁礼", architectKeys: ["魚谷繁礼"], year: 2019, yearLabel: "2019年竣工", area: "中京区", lat: 35.0124, lng: 135.7538, memo: "木造長屋を鉄骨で覆い保存しつつ海上コンテナを積んだ複合施設。コンテナ間の路地と錆色が瓦に馴染む。", photos: [] },
+      { id: 70, series: "京都編5", orderInSeries: "15", name: "FORNI (HOTEL THE MITSUI KYOTO)", architect: "栗生明（MA）／内装：ANDRÉ FU・赤尾洋平", architectKeys: ["栗生明", "ANDRÉ FU", "赤尾洋平"], year: 2020, yearLabel: "2020年竣工", area: "中京区", lat: 35.0132, lng: 135.7524, memo: "三井総領家邸宅跡地。梶井宮門の先に水盤と庭園が広がる。ANDRÉ FUの空間をレストラン利用でも体感可。", photos: [] },
+      { id: 71, series: "京都編5", orderInSeries: "おまけ", name: "ルキャトーズィエム", architect: "不詳", architectKeys: [], year: 2013, yearLabel: "2013年オープン", area: "左京区（荒神口）", lat: 35.0211, lng: 135.7712, memo: "中京区をわずかに飛び出した荒神口近くの名ビストロ。塩と肉のダイレクトな旨味が味わえる。", photos: [] },
 
-      { id: 76, series: "京都編6", name: "祇園閣", architect: "伊東忠太", year: 1927, area: "東山区", lat: 35.0033, lng: 135.7815, memo: "大雲院境内に建つ宝船をかたどったユニークな銅葺塔。", photos: [] },
-      { id: 77, series: "京都編6", name: "八坂神社 本殿", architect: "不詳", year: 1654, area: "東山区", lat: 35.0036, lng: 135.7785, memo: "本殿と拝殿を一つの屋根で覆う祇園造の社殿。", photos: [] },
-      { id: 78, series: "京都編6", name: "長楽館", architect: "J.M.ガーディナー", year: 1909, area: "東山区", lat: 35.0028, lng: 135.7824, memo: "円山公園の東端に建つルネサンス様式の洋館。", photos: [] },
-      { id: 79, series: "京都編6", name: "知恩院 三門", architect: "徳川秀忠（再建）", year: 1621, area: "東山区", lat: 35.0056, lng: 135.7834, memo: "日本最大級の木造二重門として知られる重厚な門。", photos: [] },
-      { id: 80, series: "京都編6", name: "青蓮院門跡 華頂殿・小御所", architect: "不詳", year: 1895, area: "東山区", lat: 35.0074, lng: 135.7822, memo: "楠の巨木と静かな書院・庭園が調和する門跡寺院。", photos: [] },
-      { id: 81, series: "京都編6", name: "京都国立近代美術館", architect: "槇文彦", year: 1986, area: "左京区", lat: 35.0144, lng: 135.7786, memo: "ガラスと金属パネルが軽快なリズムを生む美術館。", photos: [] },
-      { id: 82, series: "京都編6", name: "細見美術館", architect: "大江匡", year: 1998, area: "左京区", lat: 35.0155, lng: 135.7788, memo: "岡崎の文化軸に佇む都市型の洗練された美術館。", photos: [] },
-      { id: 83, series: "京都編6", name: "白川沿い 町家・店舗群", architect: "不詳", year: 1925, area: "東山区", lat: 35.0068, lng: 135.7745, memo: "柳と石畳、白川の流れが心地よい散策エリア。", photos: [] },
-      { id: 84, series: "京都編6", name: "六波羅蜜寺 本堂", architect: "不詳", year: 1363, area: "東山区", lat: 34.9977, lng: 135.7712, memo: "空也上人立像でも知られる歴史ある寺院建築。", photos: [] },
-      { id: 85, series: "京都編6", name: "泉涌寺 仏殿・舎利殿", architect: "不詳", year: 1668, area: "東山区", lat: 34.9818, lng: 135.7812, memo: "皇室の菩提寺として静かな谷間に広がる伽藍。", photos: [] },
-      { id: 86, series: "京都編6", name: "東福寺 三門・方丈", architect: "不詳", year: 1425, area: "東山区", lat: 34.9765, lng: 135.7738, memo: "国宝の三門と重森三玲作庭の方丈庭園が見どころ。", photos: [] },
-      { id: 87, series: "京都編6", name: "通天橋（東福寺）", architect: "不詳", year: 1957, area: "東山区", lat: 34.9776, lng: 135.7742, memo: "洗玉澗の渓谷を跨ぎ、楓の景色を望む渡り廊下。", photos: [] },
-      { id: 88, series: "京都編6", name: "京都府立陶板名画の庭", architect: "安藤忠雄", year: 1994, area: "左京区", lat: 35.0488, lng: 135.7615, memo: "コンクリート壁とスロープ、陶板名画が交差する空間。", photos: [] },
-      { id: 89, series: "京都編6", name: "下鴨神社 河合神社", architect: "不詳", year: 1679, area: "左京区", lat: 35.0355, lng: 135.7732, memo: "鴨長明の方丈庵の復元建物も境内に設けられている。", photos: [] },
-      { id: 90, series: "京都編6", name: "出町ふたば周辺・鴨川デルタ", architect: "不詳", year: 1930, area: "上京区", lat: 35.0302, lng: 135.7715, memo: "賀茂川と高野川が合流する開放的な水辺と街角。", photos: [] },
-      { id: 91, series: "京都編6", name: "京都府立医科大学 図書館・周辺", architect: "不詳", year: 1985, area: "上京区", lat: 35.0235, lng: 135.7685, memo: "府立医大病院に隣接する医療・研究エリアの建築。", photos: [] },
-      { id: 92, series: "京都編6", name: "鴨川三条大橋", architect: "不詳", year: 1950, area: "中京区", lat: 35.0089, lng: 135.7725, memo: "擬宝珠と三条通の起点として親しまれる歴史ある橋。", photos: [] }
+      // ==================== 京都編6（北・右京・西京・南・下京区：21件） ====================
+      { id: 72, series: "京都編6", orderInSeries: "1", name: "上賀茂神社（賀茂別雷神社）", architect: "不詳", architectKeys: [], year: 1863, yearLabel: "本殿・権殿：1863年造替", area: "北区", lat: 35.0604, lng: 135.7524, memo: "白砂の広場と檜皮葺の社殿が織りなす白と茶の対比。澄んだ御手洗川が境内を潤す。", photos: [] },
+      { id: 73, series: "京都編6", orderInSeries: "2", name: "大徳寺高桐院", architect: "不詳", architectKeys: [], year: 1601, yearLabel: "1601年創建", area: "北区", lat: 35.0434, lng: 135.7418, memo: "竹林に包まれた石畳アプローチが結界を作る。薄暗い参道から書院の眩しい庭へ抜ける陰影が見事。", photos: [] },
+      { id: 74, series: "京都編6", orderInSeries: "3", name: "あぶり餅 本家 根元 かざりや", architect: "不詳", architectKeys: [], year: 1637, yearLabel: "1637年創業", area: "北区", lat: 35.0462, lng: 135.7429, memo: "今宮神社の参道で白みそタレのあぶり餅を味わう老舗。疫病鎮めの神事に由来する歴史ある佇まい。", photos: [] },
+      { id: 75, series: "京都編6", orderInSeries: "4", name: "渡月橋", architect: "不詳", architectKeys: [], year: 1934, yearLabel: "1934年完成（現橋）", area: "右京区", lat: 35.0129, lng: 135.6778, memo: "嵐山を象徴する桂川の橋。亀山上皇の故事に由来する景勝地のランドマーク。", photos: [] },
+      { id: 76, series: "京都編6", orderInSeries: "5", name: "竹林の小径", architect: "—", architectKeys: [], year: null, yearLabel: "完成時期不明", area: "右京区", lat: 35.0170, lng: 135.6713, memo: "野宮神社への参道。天高く伸びる竹林の垂直性と小柴垣が世俗を遮断する天然の結界。", photos: [] },
+      { id: 77, series: "京都編6", orderInSeries: "6", name: "福田美術館", architect: "安田幸一", architectKeys: ["安田幸一"], year: 2019, yearLabel: "2019年竣工", area: "右京区", lat: 35.0144, lng: 135.6761, memo: "渡月橋そばの厳しい景観規制エリアに建つ現代美術館。網代模様から着想したガラスと石張り。", photos: [] },
+      { id: 78, series: "京都編6", orderInSeries: "7", name: "大河内山荘庭園", architect: "大河内傳次郎", architectKeys: ["大河内傳次郎"], year: 1931, yearLabel: "1930年代〜", area: "右京区", lat: 35.0174, lng: 135.6693, memo: "起伏に富んだ地形を活かした回遊式借景庭園。進むごとに景色が移り変わり展望ゾーンからの眺望も圧巻。", photos: [] },
+      { id: 79, series: "京都編6", orderInSeries: "8", name: "Hotel 宇多野 京都別墅", architect: "増築・改修：宗本順三／内装：石井建築事務所", architectKeys: ["宗本順三", "石井建築設計事務所"], year: 1939, yearLabel: "1939年建造／2024年増築・改修", area: "右京区", lat: 35.0265, lng: 135.7105, memo: "中庭を挟んで既存部と増築部が向かい合う。貴重な近代和風建築を保存活用したホテル事例。", photos: [] },
+      { id: 80, series: "京都編6", orderInSeries: "9", name: "桂離宮", architect: "八条宮智仁親王・智忠親王", architectKeys: ["八条宮智仁親王・智忠親王"], year: 1620, yearLabel: "17世紀造営", area: "西京区", lat: 34.9836, lng: 135.7095, memo: "源氏物語を空間へ翻訳した「月を迎える装置」。床の高さと飛石の配置で視線を制御する前衛的傑作。", photos: [] },
+      { id: 81, series: "京都編6", orderInSeries: "10", name: "HOTEL SHE, KYOTO", architect: "AT.O.DE／プロデュース：龍崎翔子", architectKeys: ["AT.O.DE"], year: 2019, yearLabel: "2019年リニューアル", area: "南区", lat: 34.9794, lng: 135.7590, memo: "あえて京都らしさを使わずアメリカのモーテルをオマージュ。ロードサイド立地を活かした色彩設計。", photos: [] },
+      { id: 82, series: "京都編6", orderInSeries: "11", name: "東華菜館 本店", architect: "ウィリアム・メレル・ヴォーリズ", architectKeys: ["ウィリアム・メレル・ヴォーリズ"], year: 1926, yearLabel: "1926年竣工", area: "下京区", lat: 35.0034, lng: 135.7709, memo: "四条大橋たもとのスパニッシュ様式洋館。日本最古の手動式EVやテラコッタ装飾、そして絶品の春巻き。", photos: [] },
+      { id: 83, series: "京都編6", orderInSeries: "12", name: "Apple 京都", architect: "Foster + Partners", architectKeys: ["Foster + Partners"], year: 2018, yearLabel: "2018年竣工", area: "下京区", lat: 35.0039, lng: 135.7647, memo: "四条通に面する行灯のようなファサード。障子や提灯の意匠とグローバルブランドが美しく着地。", photos: [] },
+      { id: 84, series: "京都編6", orderInSeries: "13", name: "sequence KYOTO GOJO", architect: "日建設計・乃村工藝社 など", architectKeys: ["日建設計", "乃村工藝社"], year: 2020, yearLabel: "2020年竣工", area: "下京区", lat: 34.9977, lng: 135.7598, memo: "五条通沿いのライフスタイルホテル。しっかり熱く負担の少ないミストサウナとシャワーが最高峰。", photos: [] },
+      { id: 85, series: "京都編6", orderInSeries: "14", name: "hotel tou nishinotoin kyoto", architect: "SUPPOSE DESIGN OFFICE", architectKeys: ["SUPPOSE DESIGN OFFICE"], year: 2021, yearLabel: "2021年竣工", area: "下京区", lat: 34.9935, lng: 135.7547, memo: "渋い銅板のアプローチと黒ベースの陰影深い館内。景色が抜けない弱点を障子の光拡散で逆手に取る。", photos: [] },
+      { id: 86, series: "京都編6", orderInSeries: "15", name: "メルキュール京都ステーション", architect: "東洋設計事務所／内装：DESIGN STUDIO CROW", architectKeys: ["東洋設計事務所", "DESIGN STUDIO CROW"], year: 2020, yearLabel: "2020年竣工", area: "下京区", lat: 34.9888, lng: 135.7519, memo: "「平安京・貴族の遊び」を現代的に解釈したやり切り型の和モダン・ストーリー空間。", photos: [] },
+      { id: 87, series: "京都編6", orderInSeries: "16", name: "渉成園 (枳殻邸)", architect: "作庭：石川丈山", architectKeys: ["石川丈山"], year: 1653, yearLabel: "1653年作庭", area: "下京区", lat: 34.9912, lng: 135.7623, memo: "東本願寺の飛地境内地にある回遊式庭園。時代を経て色濃くなった木部の渋さが時間の堆積を感じさせる。", photos: [] },
+      { id: 88, series: "京都編6", orderInSeries: "17", name: "東本願寺参拝接待所", architect: "高松伸", architectKeys: ["高松伸"], year: 1998, yearLabel: "1998年竣工", area: "下京区", lat: 34.9912, lng: 135.7591, memo: "御影堂の足元に埋まるモダンかつ神聖な地下空間。三角錐台のホールと天窓の光溜まりがロマン溢れる。", photos: [] },
+      { id: 89, series: "京都編6", orderInSeries: "18", name: "Kaikado Café", architect: "Thomas Lykke（OEO Studio）", architectKeys: ["Thomas Lykke"], year: 2016, yearLabel: "2016年竣工", area: "下京区", lat: 34.9907, lng: 135.7652, memo: "市電の旧内浜架線詰所（登録有形文化財）を改修。レトロな面影と無垢材家具が心地よく調和。", photos: [] },
+      { id: 90, series: "京都編6", orderInSeries: "19", name: "京都市立芸術大学", architect: "乾・RING・フジワラボ・o＋h・吉村設計共同体", architectKeys: ["乾久美子", "RING", "フジワラボ", "o＋h", "吉村靖孝"], year: 2023, yearLabel: "2023年移転竣工", area: "下京区", lat: 34.9869, lng: 135.7647, memo: "京都駅東・崇仁地域へ移転した街に開かれたキャンパス。分棟配置と都市の玄関口としての在り方を問う。", photos: [] },
+      { id: 91, series: "京都編6", orderInSeries: "20", name: "京都市水族館", architect: "東洋設計事務所 / 大成建設", architectKeys: ["東洋設計事務所", "大成建設"], year: 2012, yearLabel: "2012年竣工", area: "下京区", lat: 34.9875, lng: 135.7478, memo: "梅小路公園内に建つ内陸型水族館。京都の川や海の展示、イルカショーで癒されるスポット。", photos: [] },
+      { id: 92, series: "京都編6", orderInSeries: "21", name: "京都駅", architect: "原広司", architectKeys: ["原広司"], year: 1997, yearLabel: "1997年竣工", area: "下京区", lat: 34.9858, lng: 135.7588, memo: "長さ470m・高さ60mの4000枚のガラス屋根に覆われた現代の巨大な谷。質量の暴力と美しさが同居。", photos: [] }
     ];
 
-    // 地図レイヤー（初期設定は航空写真）
+    // 地図レイヤー（初期設定：航空写真）
     const layers = {
       photo: L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg", {
         maxZoom: 18,
@@ -394,15 +425,15 @@
       const icon = L.divIcon({
         className: "custom-div-icon",
         html: `<div id="marker-${spot.id}" class="spot-marker">${spot.id}</div>`,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14]
+        iconSize: [26, 26],
+        iconAnchor: [13, 13]
       });
       const marker = L.marker([spot.lat, spot.lng], { icon }).addTo(map);
       marker.on("click", () => selectSpot(spot.id, { openSheet: true, flyTo: false }));
       markersById.set(spot.id, marker);
     });
 
-    // シート開閉状態（スマホ用）
+    // スマホ用シート開閉（初期状態は地図が広い）
     const mapStage = document.getElementById("map-stage");
     const btnToggleSheet = document.getElementById("btn-toggle-sheet");
     const sheetHandleBar = document.getElementById("sheet-handle-bar");
@@ -423,7 +454,7 @@
       setMapExpanded(!mapStage.classList.contains("expanded-map"));
     });
 
-    // タブ切り替え
+    // タブ切替
     const tabBtns = document.querySelectorAll(".tab-btn");
     const tabPanels = {
       list: document.getElementById("tab-list"),
@@ -434,17 +465,16 @@
     function switchTab(tabName) {
       tabBtns.forEach((btn) => {
         const isTarget = btn.dataset.tab === tabName;
-        btn.classList.toggle("text-sky-400", isTarget);
-        btn.classList.toggle("border-sky-400", isTarget);
-        btn.classList.toggle("text-slate-400", !isTarget);
+        btn.classList.toggle("text-neutral-900", isTarget);
+        btn.classList.toggle("font-bold", isTarget);
+        btn.classList.toggle("border-neutral-900", isTarget);
+        btn.classList.toggle("text-neutral-400", !isTarget);
+        btn.classList.toggle("font-semibold", !isTarget);
         btn.classList.toggle("border-transparent", !isTarget);
       });
       Object.entries(tabPanels).forEach(([key, panel]) => {
         panel.classList.toggle("hidden", key !== tabName);
       });
-      if (tabName === "detail") {
-        setMapExpanded(false);
-      }
     }
 
     tabBtns.forEach((btn) => {
@@ -454,25 +484,55 @@
       });
     });
 
-    // 一覧描画
+    // 検索・フィルタ・年代順ソート
     const searchInput = document.getElementById("search-input");
     const seriesFilter = document.getElementById("series-filter");
+    const sortSelect = document.getElementById("sort-select");
     const spotListEl = document.getElementById("spot-list");
     const countBadge = document.getElementById("count-badge");
 
     function renderList() {
       const q = searchInput.value.trim().toLowerCase();
       const ser = seriesFilter.value;
+      const sortMode = sortSelect.value;
 
-      const filtered = SPOTS.filter((s) => {
+      let filtered = SPOTS.filter((s) => {
         const matchSeries = ser === "all" || s.series === ser;
         const matchQuery =
           !q ||
           s.name.toLowerCase().includes(q) ||
           s.architect.toLowerCase().includes(q) ||
           s.area.toLowerCase().includes(q) ||
+          s.yearLabel.toLowerCase().includes(q) ||
           String(s.id).includes(q);
         return matchSeries && matchQuery;
+      });
+
+      // 並び替え（年代不明は常に末尾）
+      if (sortMode === "year-asc") {
+        filtered = [...filtered].sort((a, b) => {
+          if (a.year === null && b.year === null) return a.id - b.id;
+          if (a.year === null) return 1;
+          if (b.year === null) return -1;
+          return a.year - b.year || a.id - b.id;
+        });
+      } else if (sortMode === "year-desc") {
+        filtered = [...filtered].sort((a, b) => {
+          if (a.year === null && b.year === null) return a.id - b.id;
+          if (a.year === null) return 1;
+          if (b.year === null) return -1;
+          return b.year - a.year || a.id - b.id;
+        });
+      }
+
+      // 地図上のマーカーも絞り込みに連動
+      const visibleIds = new Set(filtered.map((s) => s.id));
+      SPOTS.forEach((s) => {
+        const m = markersById.get(s.id);
+        if (!m) return;
+        const shouldShow = visibleIds.has(s.id);
+        if (shouldShow && !map.hasLayer(m)) m.addTo(map);
+        if (!shouldShow && map.hasLayer(m)) map.removeLayer(m);
       });
 
       countBadge.textContent = filtered.length;
@@ -481,17 +541,23 @@
       filtered.forEach((s) => {
         const item = document.createElement("button");
         item.type = "button";
+        const isActive = s.id === activeSpotId;
         item.className =
-          "w-full text-left px-2.5 py-2 rounded-lg border transition flex items-center justify-between gap-2 " +
-          (s.id === activeSpotId
-            ? "bg-sky-950/80 border-sky-500 text-white"
-            : "bg-slate-800/60 hover:bg-slate-800 border-slate-700/70 text-slate-200");
+          "w-full text-left px-3 py-2 rounded-md border transition flex items-center justify-between gap-2 " +
+          (isActive
+            ? "bg-neutral-900 border-neutral-900 text-white"
+            : "bg-white hover:bg-neutral-50 border-neutral-200 text-neutral-900");
         item.innerHTML = `
           <div class="min-w-0">
-            <div class="text-xs font-semibold truncate">${s.id}. ${s.name}</div>
-            <div class="text-[11px] text-slate-400 truncate">${s.architect}（${s.year}） · ${s.series}</div>
+            <div class="text-xs font-bold truncate">${s.id}. ${s.name}</div>
+            <div class="text-[11px] ${isActive ? "text-neutral-300" : "text-neutral-500"} truncate mt-0.5">
+              ${s.yearLabel} · ${s.architect}
+            </div>
           </div>
-          <span class="text-[10px] text-slate-400 shrink-0">${s.area}</span>
+          <div class="text-right shrink-0">
+            <div class="text-[10px] font-medium ${isActive ? "text-neutral-300" : "text-neutral-500"}">${s.series}</div>
+            <div class="text-[10px] ${isActive ? "text-neutral-400" : "text-neutral-400"}">${s.area}</div>
+          </div>
         `;
         item.addEventListener("click", () => {
           selectSpot(s.id, { openSheet: true, flyTo: true });
@@ -500,7 +566,7 @@
       });
     }
 
-    // スポット選択＆詳細表示
+    // 詳細表示＆同じ設計者の作品（竣工年順）
     const detailEmpty = document.getElementById("detail-empty");
     const detailBody = document.getElementById("detail-body");
     const detailSeries = document.getElementById("detail-series");
@@ -509,7 +575,6 @@
     const detailPhotos = document.getElementById("detail-photos");
     const detailMemo = document.getElementById("detail-memo");
     const sameArchitectBox = document.getElementById("same-architect-box");
-    const sameArchitectTitle = document.getElementById("same-architect-title");
     const sameArchitectList = document.getElementById("same-architect-list");
 
     function selectSpot(id, { openSheet = true, flyTo = true } = {}) {
@@ -532,9 +597,9 @@
 
       detailEmpty.classList.add("hidden");
       detailBody.classList.remove("hidden");
-      detailSeries.textContent = `${spot.series} · No.${spot.id}`;
+      detailSeries.textContent = `${spot.series}（${spot.orderInSeries}） · #${spot.id}`;
       detailName.textContent = spot.name;
-      detailMeta.textContent = `設計：${spot.architect} ／ 竣工：${spot.year}年 ／ ${spot.area}`;
+      detailMeta.textContent = `設計・造営：${spot.architect} ／ ${spot.yearLabel} ／ ${spot.area}`;
       detailMemo.textContent = spot.memo || "";
 
       // 写真（1〜2枚、指定がある場合のみ表示）
@@ -548,7 +613,7 @@
           img.src = src;
           img.alt = spot.name;
           img.loading = "lazy";
-          img.className = "w-full h-32 object-cover rounded-lg border border-slate-700 bg-slate-800";
+          img.className = "w-full h-36 object-cover rounded-md border border-neutral-200 bg-neutral-100";
           img.onerror = () => img.remove();
           detailPhotos.appendChild(img);
         });
@@ -556,40 +621,50 @@
         detailPhotos.classList.add("hidden");
       }
 
-      // 同じ設計者の作品（竣工年順）
-      const isUnknown = !spot.architect || ["不詳", "各種"].includes(spot.architect.trim());
-      const sameArchWorks = isUnknown
-        ? []
-        : SPOTS
-            .filter((s) => s.architect.trim() === spot.architect.trim())
-            .sort((a, b) => a.year - b.year || a.id - b.id);
+      // 同じ設計者の作品（複数キーがある場合は設計者ごとにグルーピングして竣工年順に表示）
+      sameArchitectList.innerHTML = "";
+      const keys = Array.isArray(spot.architectKeys) ? spot.architectKeys : [];
+      let hasAnyGroup = false;
 
-      if (sameArchWorks.length > 1) {
-        sameArchitectBox.classList.remove("hidden");
-        sameArchitectTitle.textContent = `同じ設計者の作品（${spot.architect}・竣工年順）`;
-        sameArchitectList.innerHTML = "";
-        sameArchWorks.forEach((w) => {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          const isCurrent = w.id === spot.id;
-          btn.className =
-            "w-full text-left px-2.5 py-1.5 rounded text-xs flex items-center justify-between border " +
-            (isCurrent
-              ? "bg-amber-500/20 border-amber-400/60 text-amber-200 font-semibold"
-              : "bg-slate-800/70 hover:bg-slate-800 border-slate-700/60 text-slate-200");
-          btn.innerHTML = `
-            <span class="truncate">${w.id}. ${w.name}</span>
-            <span class="text-[11px] text-slate-400 shrink-0 ml-2">${w.year}年</span>
-          `;
-          btn.addEventListener("click", () => {
-            selectSpot(w.id, { openSheet: true, flyTo: true });
+      keys.forEach((archKey) => {
+        const works = SPOTS
+          .filter((s) => Array.isArray(s.architectKeys) && s.architectKeys.includes(archKey))
+          .sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999) || a.id - b.id);
+
+        if (works.length > 1) {
+          hasAnyGroup = true;
+          const groupWrap = document.createElement("div");
+          groupWrap.className = "space-y-1";
+
+          const heading = document.createElement("h3");
+          heading.className = "text-xs font-bold text-neutral-900";
+          heading.textContent = `同じ設計者の作品（${archKey}・竣工年順）`;
+          groupWrap.appendChild(heading);
+
+          works.forEach((w) => {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            const isCurrent = w.id === spot.id;
+            btn.className =
+              "w-full text-left px-2.5 py-1.5 rounded-md text-xs flex items-center justify-between border transition " +
+              (isCurrent
+                ? "bg-neutral-900 border-neutral-900 text-white font-semibold"
+                : "bg-neutral-50 hover:bg-neutral-100 border-neutral-200 text-neutral-800");
+            btn.innerHTML = `
+              <span class="truncate">${w.id}. ${w.name}</span>
+              <span class="text-[11px] ${isCurrent ? "text-neutral-300" : "text-neutral-500"} shrink-0 ml-2">${w.year ? w.year + "年" : "—"}</span>
+            `;
+            btn.addEventListener("click", () => {
+              selectSpot(w.id, { openSheet: true, flyTo: true });
+            });
+            groupWrap.appendChild(btn);
           });
-          sameArchitectList.appendChild(btn);
-        });
-      } else {
-        sameArchitectBox.classList.add("hidden");
-        sameArchitectList.innerHTML = "";
-      }
+
+          sameArchitectList.appendChild(groupWrap);
+        }
+      });
+
+      sameArchitectBox.classList.toggle("hidden", !hasAnyGroup);
 
       if (openSheet) {
         setMapExpanded(false);
@@ -603,7 +678,7 @@
       setMapExpanded(true);
     });
 
-    // レイヤー切替＆全体表示
+    // 地図レイヤー切替＆全体表示
     const layerSelect = document.getElementById("layer-select");
     let currentLayer = layers.photo;
     layerSelect.addEventListener("change", () => {
@@ -613,7 +688,9 @@
     });
 
     document.getElementById("btn-fit-all").addEventListener("click", () => {
-      const group = L.featureGroup(Array.from(markersById.values()));
+      const visibleMarkers = Array.from(markersById.values()).filter((m) => map.hasLayer(m));
+      if (visibleMarkers.length === 0) return;
+      const group = L.featureGroup(visibleMarkers);
       map.fitBounds(group.getBounds().pad(0.08));
     });
 
@@ -623,10 +700,8 @@
     const routeResult = document.getElementById("route-result");
 
     SPOTS.forEach((s) => {
-      const opt1 = new Option(`${s.id}. ${s.name}`, s.id);
-      const opt2 = new Option(`${s.id}. ${s.name}`, s.id);
-      routeFrom.add(opt1);
-      routeTo.add(opt2);
+      routeFrom.add(new Option(`${s.id}. ${s.name}`, s.id));
+      routeTo.add(new Option(`${s.id}. ${s.name}`, s.id));
     });
     if (SPOTS.length > 1) routeTo.selectedIndex = 1;
 
@@ -648,17 +723,18 @@
 
       if (routeLine) map.removeLayer(routeLine);
       routeLine = L.polyline([[sA.lat, sA.lng], [sB.lat, sB.lng]], {
-        color: "#f59e0b",
+        color: "#ffffff",
         weight: 3,
-        dashArray: "6, 6"
+        dashArray: "6, 6",
+        opacity: 0.95
       }).addTo(map);
 
       map.fitBounds(routeLine.getBounds().pad(0.2));
       const dist = calcDistanceKm(sA, sB);
       routeResult.classList.remove("hidden");
       routeResult.innerHTML = `
-        <div class="font-semibold text-amber-300">${sA.name} → ${sB.name}</div>
-        <div class="mt-1">直線距離：約 ${dist.toFixed(2)} km</div>
+        <div class="font-bold text-neutral-900">${sA.name} → ${sB.name}</div>
+        <div class="mt-1 text-neutral-600">直線距離：約 ${dist.toFixed(2)} km</div>
       `;
     });
 
@@ -672,6 +748,7 @@
 
     searchInput.addEventListener("input", renderList);
     seriesFilter.addEventListener("change", renderList);
+    sortSelect.addEventListener("change", renderList);
 
     renderList();
   </script>
