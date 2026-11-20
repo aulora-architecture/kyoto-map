@@ -59,17 +59,24 @@
       width: 100%;
     }
 
+    /* スマホ3段階シートの高さ制御 */
     #map-stage {
       position: relative;
       width: 100%;
-      height: 58%;
-      min-height: 220px;
+      height: 54%;
+      min-height: 120px;
       flex-shrink: 0;
       transition: height 0.22s ease;
       background: #1a1a1a;
     }
-    #map-stage.expanded-map {
-      height: calc(100% - 50px);
+    #map-stage.sheet-min {
+      height: calc(100% - 48px);
+    }
+    #map-stage.sheet-mid {
+      height: 54%;
+    }
+    #map-stage.sheet-max {
+      height: 24%;
     }
     #map {
       width: 100%;
@@ -80,7 +87,7 @@
     #bottom-sheet {
       position: relative;
       flex: 1;
-      min-height: 50px;
+      min-height: 48px;
       background: var(--bg-main);
       border-top: 1px solid var(--border-color);
       display: flex;
@@ -93,21 +100,12 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 8px 14px;
+      gap: 8px;
+      padding: 6px 12px;
       background: var(--bg-sub);
       border-bottom: 1px solid var(--border-soft);
-      cursor: pointer;
       user-select: none;
       flex-shrink: 0;
-    }
-    .handle-pill {
-      width: 34px;
-      height: 4px;
-      border-radius: 999px;
-      background: var(--text-muted);
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
     }
 
     #sheet-content {
@@ -166,6 +164,7 @@
       transition: background 0.15s ease;
     }
     .ui-btn-secondary:hover { background: var(--bg-hover); }
+    .ui-btn-secondary:disabled { opacity: 0.35; cursor: default; }
     .ui-card {
       background: var(--bg-sub);
       border: 1px solid var(--border-soft);
@@ -187,7 +186,7 @@
     }
     .tab-btn {
       flex: 1;
-      padding: 10px 4px;
+      padding: 9px 4px;
       font-size: 12px;
       font-weight: 600;
       color: var(--text-muted);
@@ -222,6 +221,38 @@
     }
     .spot-item .sub { color: var(--text-sub); }
     .spot-item.active .sub { opacity: 0.78; color: var(--accent-text); }
+
+    /* 写真サムネイル */
+    .photo-thumb-wrap {
+      position: relative;
+      overflow: hidden;
+      border-radius: 6px;
+      border: 1px solid var(--border-soft);
+      background: var(--bg-card);
+      cursor: zoom-in;
+    }
+    .photo-thumb-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.2s ease;
+    }
+    .photo-thumb-wrap:hover img {
+      transform: scale(1.03);
+    }
+    .photo-zoom-badge {
+      position: absolute;
+      right: 6px;
+      bottom: 6px;
+      font-size: 10px;
+      line-height: 1;
+      padding: 3px 5px;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.62);
+      color: #ffffff;
+      pointer-events: none;
+    }
 
     /* モノトーンマーカー */
     .spot-marker {
@@ -274,7 +305,7 @@
 <body>
   <div id="app">
     <!-- 地図エリア -->
-    <div id="map-stage" class="expanded-map">
+    <div id="map-stage" class="sheet-min">
       <div id="map"></div>
 
       <!-- 座標修正モード用バー（URL末尾に ?edit=1 をつけたときだけ表示） -->
@@ -308,12 +339,19 @@
 
     <!-- 下部シート（スマホ）／左パネル（PC） -->
     <div id="bottom-sheet">
-      <div id="sheet-handle-bar" title="タップでシートを開閉">
-        <span id="sheet-status-label" class="text-xs font-medium truncate max-w-[55%]">京都 建築巡り（全92件）</span>
-        <div class="handle-pill"></div>
-        <button id="btn-toggle-sheet" type="button" class="text-xs font-semibold underline underline-offset-2">
-          シートを開く
+      <!-- スマホ用3段階ハンドルバー -->
+      <div id="sheet-handle-bar">
+        <button id="sheet-status-label" type="button" class="text-xs font-semibold truncate text-left flex-1 min-w-0">
+          京都 建築巡り（全92件）
         </button>
+        <div class="flex items-center gap-1 shrink-0">
+          <button id="btn-sheet-up" type="button" class="ui-btn-secondary px-2 py-1 text-[11px] font-semibold" title="シートを広げる">
+            ▲ 広く
+          </button>
+          <button id="btn-sheet-down" type="button" class="ui-btn-secondary px-2 py-1 text-[11px] font-semibold" title="地図を広げる">
+            ▼ 地図
+          </button>
+        </div>
       </div>
 
       <!-- タブバー -->
@@ -359,28 +397,28 @@
         </div>
 
         <!-- 2. 詳細タブ -->
-        <div id="tab-detail" class="hidden space-y-3">
+        <div id="tab-detail" class="hidden space-y-2.5">
           <div id="detail-empty" class="text-xs py-8 text-center" style="color: var(--text-muted);">
             地図上のピンまたは「探す」から建築を選ぶと詳細が表示されます。
           </div>
 
-          <div id="detail-body" class="hidden space-y-3">
+          <div id="detail-body" class="hidden space-y-2.5">
             <div class="flex items-start justify-between gap-2">
               <div>
-                <span id="detail-series" class="inline-block text-[10px] font-semibold px-2 py-0.5 rounded mb-1.5" style="background: var(--accent-bg); color: var(--accent-text);"></span>
+                <span id="detail-series" class="inline-block text-[10px] font-semibold px-2 py-0.5 rounded mb-1" style="background: var(--accent-bg); color: var(--accent-text);"></span>
                 <h2 id="detail-name" class="text-base font-bold leading-snug"></h2>
-                <p id="detail-meta" class="text-xs mt-1 leading-relaxed" style="color: var(--text-sub);"></p>
+                <p id="detail-meta" class="text-xs mt-0.5 leading-relaxed" style="color: var(--text-sub);"></p>
               </div>
               <button id="btn-close-detail" type="button" class="ui-btn-secondary text-xs px-2.5 py-1 shrink-0">
                 閉じる
               </button>
             </div>
 
-            <!-- 写真表示エリア（1〜2枚・設定時のみ表示） -->
+            <!-- 写真表示エリア（最大2枚・コンパクト表示＋タップで全画面拡大） -->
             <div id="detail-photos" class="hidden"></div>
 
             <!-- ひとことメモ -->
-            <p id="detail-memo" class="ui-card text-xs leading-relaxed p-3" style="color: var(--text-main);"></p>
+            <p id="detail-memo" class="ui-card text-xs leading-relaxed p-2.5" style="color: var(--text-main);"></p>
 
             <!-- アクションボタン：note記事 & Googleマップ -->
             <div class="grid grid-cols-2 gap-2">
@@ -405,7 +443,7 @@
             </div>
 
             <!-- 同じ設計者の作品（竣工年順） -->
-            <div id="same-architect-box" class="hidden pt-3 space-y-2" style="border-top: 1px solid var(--border-soft);">
+            <div id="same-architect-box" class="hidden pt-2.5 space-y-2" style="border-top: 1px solid var(--border-soft);">
               <div id="same-architect-list" class="space-y-2.5"></div>
             </div>
           </div>
@@ -441,6 +479,26 @@
     </div>
   </div>
 
+  <!-- 全画面写真拡大モーダル（ライトボックス） -->
+  <div id="lightbox" class="hidden fixed inset-0 z-[1000] bg-black/92 flex flex-col items-center justify-center p-4">
+    <button id="lb-close" type="button"
+      class="absolute top-3 right-3 px-3 py-1.5 rounded-md bg-white/15 hover:bg-white/25 text-white text-xs font-semibold border border-white/25">
+      閉じる ×
+    </button>
+
+    <img id="lb-img" src="" alt="" class="max-w-[94vw] max-h-[78vh] object-contain rounded shadow-2xl select-none" />
+
+    <div class="mt-3 flex items-center gap-4 text-white text-xs">
+      <button id="lb-prev" type="button" class="hidden px-3 py-1.5 rounded bg-white/15 hover:bg-white/25 border border-white/25">
+        ← 前へ
+      </button>
+      <span id="lb-caption" class="text-neutral-200 text-center"></span>
+      <button id="lb-next" type="button" class="hidden px-3 py-1.5 rounded bg-white/15 hover:bg-white/25 border border-white/25">
+        次へ →
+      </button>
+    </div>
+  </div>
+
   <script>
     // 各シリーズのnote記事URL
     const NOTE_URLS = {
@@ -452,7 +510,7 @@
       "京都編6": "https://note.com/aulora/n/n680bf7739786?magazine_key=m82e9d0285e88"
     };
 
-    // 京都編1〜6 全92スポット（座標修正済み）
+    // 京都編1〜6 全92スポット（座標修正済み・1〜5番写真設定済み）
     const SPOTS = [
       {
         "id": 1,
@@ -467,7 +525,7 @@
         "lat": 35.06048,
         "lng": 135.80167,
         "memo": "深い軒が作る影とプロポーションが視覚的な平穏をもたらす空間。本と珈琲、建築に浸れる。",
-        "photos": []
+        "photos": ["./kyoto-images/kyoto-01-1.jpeg", "./kyoto-images/kyoto-01-2.jpeg"]
       },
       {
         "id": 2,
@@ -482,7 +540,7 @@
         "lat": 35.063804,
         "lng": 135.808545,
         "memo": "数寄屋造りの建物から眺める瑠璃の庭。2階の窓枠が景色を絵画のように切り取る。",
-        "photos": []
+        "photos": ["./kyoto-images/kyoto-02-1.jpeg"]
       },
       {
         "id": 3,
@@ -497,7 +555,7 @@
         "lat": 35.060924,
         "lng": 135.783226,
         "memo": "山並みに合わせた斜めの造形が自然と力強く応答する、現代の神殿のような巨大建築。",
-        "photos": []
+        "photos": ["./kyoto-images/kyoto-03-1.jpeg", "./kyoto-images/kyoto-03-2.jpeg"]
       },
       {
         "id": 4,
@@ -512,7 +570,7 @@
         "lat": 35.062935,
         "lng": 135.781177,
         "memo": "円形を基調とした柔らかな曲線と繊細なディテールで包み込む、村野藤吾晩年の傑作ホテル。",
-        "photos": []
+        "photos": ["./kyoto-images/kyoto-04-1.jpeg", "./kyoto-images/kyoto-04-2.jpeg"]
       },
       {
         "id": 5,
@@ -527,7 +585,7 @@
         "lat": 35.064533,
         "lng": 135.768677,
         "memo": "生垣を額縁に見立て比叡山を取り込む借景庭園の最高峰。杉の幹が垂直のグリッドとなる。",
-        "photos": []
+        "photos": ["./kyoto-images/kyoto-05-1.jpeg"]
       },
       {
         "id": 6,
@@ -1922,25 +1980,90 @@
       });
     }
 
-    // スマホ用シート開閉
+    // スマホ用シート3段階制御（min / mid / max）
     const mapStage = document.getElementById("map-stage");
-    const btnToggleSheet = document.getElementById("btn-toggle-sheet");
-    const sheetHandleBar = document.getElementById("sheet-handle-bar");
     const sheetStatusLabel = document.getElementById("sheet-status-label");
+    const btnSheetUp = document.getElementById("btn-sheet-up");
+    const btnSheetDown = document.getElementById("btn-sheet-down");
+    const SHEET_STATES = ["min", "mid", "max"];
+    let sheetState = "min";
 
-    function setMapExpanded(expanded) {
-      if (expanded) {
-        mapStage.classList.add("expanded-map");
-        btnToggleSheet.textContent = "シートを開く";
-      } else {
-        mapStage.classList.remove("expanded-map");
-        btnToggleSheet.textContent = "地図を広く";
-      }
+    function setSheetState(nextState) {
+      if (!SHEET_STATES.includes(nextState)) return;
+      sheetState = nextState;
+      mapStage.classList.remove("sheet-min", "sheet-mid", "sheet-max");
+      mapStage.classList.add(`sheet-${sheetState}`);
+      btnSheetUp.disabled = sheetState === "max";
+      btnSheetDown.disabled = sheetState === "min";
       setTimeout(() => map.invalidateSize(), 240);
     }
 
-    sheetHandleBar.addEventListener("click", () => {
-      setMapExpanded(!mapStage.classList.contains("expanded-map"));
+    btnSheetUp.addEventListener("click", () => {
+      const idx = SHEET_STATES.indexOf(sheetState);
+      if (idx < SHEET_STATES.length - 1) setSheetState(SHEET_STATES[idx + 1]);
+    });
+    btnSheetDown.addEventListener("click", () => {
+      const idx = SHEET_STATES.indexOf(sheetState);
+      if (idx > 0) setSheetState(SHEET_STATES[idx - 1]);
+    });
+    sheetStatusLabel.addEventListener("click", () => {
+      setSheetState(sheetState === "min" ? "mid" : "min");
+    });
+    setSheetState("min");
+
+    // 全画面写真拡大（ライトボックス）
+    const lightbox = document.getElementById("lightbox");
+    const lbImg = document.getElementById("lb-img");
+    const lbCaption = document.getElementById("lb-caption");
+    const lbPrev = document.getElementById("lb-prev");
+    const lbNext = document.getElementById("lb-next");
+    const lbClose = document.getElementById("lb-close");
+    let lbPhotos = [];
+    let lbTitle = "";
+    let lbIndex = 0;
+
+    function renderLightbox() {
+      if (lbPhotos.length === 0) return;
+      lbImg.src = lbPhotos[lbIndex];
+      lbImg.alt = lbTitle;
+      lbCaption.textContent = lbPhotos.length > 1
+        ? `${lbTitle}（${lbIndex + 1} / ${lbPhotos.length}）`
+        : lbTitle;
+      const showNav = lbPhotos.length > 1;
+      lbPrev.classList.toggle("hidden", !showNav);
+      lbNext.classList.toggle("hidden", !showNav);
+    }
+
+    function openLightbox(photos, index, title) {
+      lbPhotos = photos;
+      lbIndex = index;
+      lbTitle = title;
+      renderLightbox();
+      lightbox.classList.remove("hidden");
+    }
+
+    function closeLightbox() {
+      lightbox.classList.add("hidden");
+      lbImg.src = "";
+    }
+
+    lbClose.addEventListener("click", closeLightbox);
+    lightbox.addEventListener("click", (e) => {
+      if (e.target === lightbox) closeLightbox();
+    });
+    lbPrev.addEventListener("click", () => {
+      lbIndex = (lbIndex - 1 + lbPhotos.length) % lbPhotos.length;
+      renderLightbox();
+    });
+    lbNext.addEventListener("click", () => {
+      lbIndex = (lbIndex + 1) % lbPhotos.length;
+      renderLightbox();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (lightbox.classList.contains("hidden")) return;
+      if (e.key === "Escape") closeLightbox();
+      if (e.key === "ArrowLeft" && lbPhotos.length > 1) lbPrev.click();
+      if (e.key === "ArrowRight" && lbPhotos.length > 1) lbNext.click();
     });
 
     // タブ切替
@@ -1958,7 +2081,7 @@
 
     tabBtns.forEach((btn) => {
       btn.addEventListener("click", () => {
-        setMapExpanded(false);
+        if (sheetState === "min") setSheetState("mid");
         switchTab(btn.dataset.tab);
       });
     });
@@ -2080,21 +2203,31 @@
       // 単体Googleマップリンク
       btnGmapSingle.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(spot.name + " 京都")}`;
 
-      // 写真（1〜2枚、指定がある場合のみ表示）
+      // 写真（最大2枚・コンパクト表示＋タップで全画面拡大）
       detailPhotos.innerHTML = "";
       const validPhotos = Array.isArray(spot.photos) ? spot.photos.filter(Boolean).slice(0, 2) : [];
       if (validPhotos.length > 0) {
         detailPhotos.classList.remove("hidden");
         detailPhotos.className = validPhotos.length === 1 ? "grid grid-cols-1 gap-2" : "grid grid-cols-2 gap-2";
-        validPhotos.forEach((src) => {
+        validPhotos.forEach((src, idx) => {
+          const wrap = document.createElement("div");
+          wrap.className = "photo-thumb-wrap h-24 md:h-32";
+          wrap.title = "タップで拡大表示";
+
           const img = document.createElement("img");
           img.src = src;
-          img.alt = spot.name;
+          img.alt = `${spot.name} 写真${idx + 1}`;
           img.loading = "lazy";
-          img.className = "w-full h-36 object-cover rounded-md border";
-          img.style.borderColor = "var(--border-soft)";
-          img.onerror = () => img.remove();
-          detailPhotos.appendChild(img);
+          img.onerror = () => wrap.remove();
+
+          const badge = document.createElement("span");
+          badge.className = "photo-zoom-badge";
+          badge.textContent = "拡大";
+
+          wrap.appendChild(img);
+          wrap.appendChild(badge);
+          wrap.addEventListener("click", () => openLightbox(validPhotos, idx, spot.name));
+          detailPhotos.appendChild(wrap);
         });
       } else {
         detailPhotos.classList.add("hidden");
@@ -2138,15 +2271,16 @@
       sameArchitectBox.classList.toggle("hidden", !hasAnyGroup);
 
       if (openSheet) {
-        setMapExpanded(false);
+        if (sheetState === "min") setSheetState("mid");
         switchTab("detail");
+        document.getElementById("sheet-content").scrollTop = 0;
       }
       renderList();
     }
 
     document.getElementById("btn-close-detail").addEventListener("click", () => {
       switchTab("list");
-      setMapExpanded(true);
+      setSheetState("min");
     });
 
     // 詳細から2地点ルートへ送るボタン
@@ -2158,14 +2292,14 @@
       if (activeSpotId === null) return;
       routeFrom.value = String(activeSpotId);
       switchTab("route");
-      setMapExpanded(false);
+      if (sheetState === "min") setSheetState("mid");
     });
 
     document.getElementById("btn-set-dest").addEventListener("click", () => {
       if (activeSpotId === null) return;
       routeTo.value = String(activeSpotId);
       switchTab("route");
-      setMapExpanded(false);
+      if (sheetState === "min") setSheetState("mid");
       calcAndShowRoute();
     });
 
