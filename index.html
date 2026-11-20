@@ -10,6 +10,36 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
+    :root {
+      --bg-main: #ffffff;
+      --bg-sub: #fafafa;
+      --bg-card: #f5f5f5;
+      --bg-hover: #efefef;
+      --text-main: #111111;
+      --text-sub: #525252;
+      --text-muted: #737373;
+      --border-color: #d4d4d4;
+      --border-soft: #e5e5e5;
+      --accent-bg: #111111;
+      --accent-text: #ffffff;
+      --ctrl-bg: rgba(255, 255, 255, 0.94);
+    }
+
+    body.dark-mode {
+      --bg-main: #121212;
+      --bg-sub: #1a1a1a;
+      --bg-card: #222222;
+      --bg-hover: #2a2a2a;
+      --text-main: #f5f5f5;
+      --text-sub: #a3a3a3;
+      --text-muted: #8a8a8a;
+      --border-color: #3a3a3a;
+      --border-soft: #2e2e2e;
+      --accent-bg: #f5f5f5;
+      --accent-text: #111111;
+      --ctrl-bg: rgba(20, 20, 20, 0.92);
+    }
+
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html, body {
       margin: 0;
@@ -17,10 +47,11 @@
       height: 100%;
       width: 100%;
       overflow: hidden;
-      background: #111111;
-      color: #111111;
+      background: var(--bg-main);
+      color: var(--text-main);
       font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
     }
+
     #app {
       display: flex;
       flex-direction: column;
@@ -28,11 +59,10 @@
       width: 100%;
     }
 
-    /* スマホ：上部に地図（基本は広め）、下部にシート */
     #map-stage {
       position: relative;
       width: 100%;
-      height: 62%;
+      height: 58%;
       min-height: 220px;
       flex-shrink: 0;
       transition: height 0.22s ease;
@@ -51,20 +81,21 @@
       position: relative;
       flex: 1;
       min-height: 50px;
-      background: #ffffff;
-      border-top: 1px solid #d4d4d4;
+      background: var(--bg-main);
+      border-top: 1px solid var(--border-color);
       display: flex;
       flex-direction: column;
       overflow: hidden;
       z-index: 10;
     }
+
     #sheet-handle-bar {
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 8px 14px;
-      background: #fafafa;
-      border-bottom: 1px solid #e5e5e5;
+      background: var(--bg-sub);
+      border-bottom: 1px solid var(--border-soft);
       cursor: pointer;
       user-select: none;
       flex-shrink: 0;
@@ -73,31 +104,29 @@
       width: 34px;
       height: 4px;
       border-radius: 999px;
-      background: #a3a3a3;
+      background: var(--text-muted);
       position: absolute;
       left: 50%;
       transform: translateX(-50%);
     }
+
     #sheet-content {
       flex: 1;
       overflow-y: auto;
-      padding: 12px 14px 24px;
-      background: #ffffff;
+      padding: 12px 14px 28px;
+      background: var(--bg-main);
     }
 
-    /* PC（md以上）：左にパネル、右に地図 */
     @media (min-width: 768px) {
-      #app {
-        flex-direction: row;
-      }
+      #app { flex-direction: row; }
       #bottom-sheet {
         order: 1;
-        width: 400px;
+        width: 410px;
         max-width: 44vw;
         height: 100%;
         flex: none;
         border-top: none;
-        border-right: 1px solid #d4d4d4;
+        border-right: 1px solid var(--border-color);
       }
       #map-stage {
         order: 2;
@@ -105,12 +134,96 @@
         width: auto;
         height: 100% !important;
       }
-      #sheet-handle-bar {
-        display: none;
-      }
+      #sheet-handle-bar { display: none; }
     }
 
-    /* モノトーンのマーカー */
+    /* テーマ連動パーツ */
+    .ui-input, .ui-select {
+      background: var(--bg-sub);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 12px;
+      outline: none;
+    }
+    .ui-input:focus, .ui-select:focus {
+      border-color: var(--text-main);
+    }
+    .ui-btn-primary {
+      background: var(--accent-bg);
+      color: var(--accent-text);
+      border: 1px solid var(--accent-bg);
+      border-radius: 6px;
+      font-weight: 600;
+      transition: opacity 0.15s ease;
+    }
+    .ui-btn-primary:hover { opacity: 0.86; }
+    .ui-btn-secondary {
+      background: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      transition: background 0.15s ease;
+    }
+    .ui-btn-secondary:hover { background: var(--bg-hover); }
+    .ui-card {
+      background: var(--bg-sub);
+      border: 1px solid var(--border-soft);
+      border-radius: 6px;
+    }
+    .ui-map-ctrl {
+      background: var(--ctrl-bg);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      backdrop-filter: blur(4px);
+    }
+
+    .tab-bar {
+      display: flex;
+      background: var(--bg-sub);
+      border-bottom: 1px solid var(--border-soft);
+      flex-shrink: 0;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 10px 4px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s ease, border-color 0.15s ease;
+    }
+    .tab-btn.active {
+      color: var(--text-main);
+      font-weight: 700;
+      border-bottom-color: var(--text-main);
+    }
+
+    .spot-item {
+      width: 100%;
+      text-align: left;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border-soft);
+      background: var(--bg-main);
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      transition: background 0.15s ease;
+    }
+    .spot-item:hover { background: var(--bg-hover); }
+    .spot-item.active {
+      background: var(--accent-bg);
+      border-color: var(--accent-bg);
+      color: var(--accent-text);
+    }
+    .spot-item .sub { color: var(--text-sub); }
+    .spot-item.active .sub { opacity: 0.78; color: var(--accent-text); }
+
+    /* モノトーンマーカー */
     .spot-marker {
       display: flex;
       align-items: center;
@@ -124,7 +237,7 @@
       font-weight: 700;
       border: 2px solid #ffffff;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
-      transition: transform 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+      transition: transform 0.15s ease;
     }
     .spot-marker.active {
       background: #ffffff;
@@ -133,24 +246,28 @@
       transform: scale(1.25);
       z-index: 999 !important;
     }
+    .spot-marker.edited {
+      border-style: dashed;
+      transform: scale(1.15);
+    }
 
-    /* Leaflet コントロールをモノトーンに統一 */
+    /* Leaflet コントロール */
     .leaflet-control-attribution {
       font-size: 10px !important;
-      background: rgba(255, 255, 255, 0.88) !important;
-      color: #262626 !important;
+      background: var(--ctrl-bg) !important;
+      color: var(--text-sub) !important;
     }
     .leaflet-control-attribution a {
-      color: #111111 !important;
+      color: var(--text-main) !important;
       text-decoration: underline;
     }
     .leaflet-bar a {
-      background-color: #ffffff !important;
-      color: #111111 !important;
-      border-color: #d4d4d4 !important;
+      background-color: var(--bg-main) !important;
+      color: var(--text-main) !important;
+      border-color: var(--border-color) !important;
     }
     .leaflet-bar a:hover {
-      background-color: #f5f5f5 !important;
+      background-color: var(--bg-hover) !important;
     }
   </style>
 </head>
@@ -160,16 +277,30 @@
     <div id="map-stage" class="expanded-map">
       <div id="map"></div>
 
+      <!-- 座標修正モード用バー（URL末尾に ?edit=1 をつけたときだけ表示） -->
+      <div id="edit-bar" class="hidden absolute top-2.5 left-12 right-36 z-[450] ui-map-ctrl px-3 py-2 shadow-md flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div>
+          <span class="font-bold">座標修正モード</span>
+          <span id="edit-count" class="ml-1.5 opacity-80">ピンをドラッグして移動（変更: 0件）</span>
+        </div>
+        <button id="btn-copy-spots" type="button" class="ui-btn-primary px-2.5 py-1 text-[11px]">
+          修正済みSPOTSをコピー
+        </button>
+      </div>
+
       <!-- 地図右上のコンパクト操作 -->
       <div class="absolute top-2.5 right-2.5 z-[400] flex flex-col gap-1.5 items-end">
-        <select id="layer-select" aria-label="地図の種類"
-          class="bg-white/95 text-neutral-900 text-xs font-medium border border-neutral-400 rounded-md px-2.5 py-1.5 shadow-sm backdrop-blur focus:outline-none">
-          <option value="photo" selected>航空写真</option>
-          <option value="std">標準地図</option>
-          <option value="pale">淡色地図</option>
-        </select>
-        <button id="btn-fit-all" type="button"
-          class="bg-white/95 hover:bg-neutral-100 text-neutral-900 text-xs font-medium border border-neutral-400 rounded-md px-2.5 py-1.5 shadow-sm backdrop-blur">
+        <div class="flex gap-1.5">
+          <button id="btn-theme" type="button" class="ui-map-ctrl px-2.5 py-1.5 text-xs font-medium shadow-sm">
+            ダーク
+          </button>
+          <select id="layer-select" aria-label="地図の種類" class="ui-map-ctrl px-2 py-1.5 text-xs font-medium shadow-sm">
+            <option value="photo" selected>航空写真</option>
+            <option value="std">標準地図</option>
+            <option value="pale">淡色地図</option>
+          </select>
+        </div>
+        <button id="btn-fit-all" type="button" class="ui-map-ctrl px-2.5 py-1.5 text-xs font-medium shadow-sm">
           全体表示
         </button>
       </div>
@@ -178,24 +309,18 @@
     <!-- 下部シート（スマホ）／左パネル（PC） -->
     <div id="bottom-sheet">
       <div id="sheet-handle-bar" title="タップでシートを開閉">
-        <span id="sheet-status-label" class="text-xs font-medium text-neutral-800 truncate max-w-[55%]">京都 建築巡り（全92件）</span>
+        <span id="sheet-status-label" class="text-xs font-medium truncate max-w-[55%]">京都 建築巡り（全92件）</span>
         <div class="handle-pill"></div>
-        <button id="btn-toggle-sheet" type="button" class="text-xs text-neutral-900 font-semibold underline underline-offset-2">
+        <button id="btn-toggle-sheet" type="button" class="text-xs font-semibold underline underline-offset-2">
           シートを開く
         </button>
       </div>
 
       <!-- タブバー -->
-      <div class="flex border-b border-neutral-200 bg-neutral-50 shrink-0">
-        <button data-tab="list" class="tab-btn flex-1 py-2.5 text-xs font-bold text-neutral-900 border-b-2 border-neutral-900">
-          探す (<span id="count-badge">92</span>)
-        </button>
-        <button data-tab="detail" class="tab-btn flex-1 py-2.5 text-xs font-semibold text-neutral-400 border-b-2 border-transparent">
-          詳細
-        </button>
-        <button data-tab="route" class="tab-btn flex-1 py-2.5 text-xs font-semibold text-neutral-400 border-b-2 border-transparent">
-          2地点ルート
-        </button>
+      <div class="tab-bar">
+        <button data-tab="list" class="tab-btn active">探す (<span id="count-badge">92</span>)</button>
+        <button data-tab="detail" class="tab-btn">詳細</button>
+        <button data-tab="route" class="tab-btn">2地点ルート</button>
       </div>
 
       <!-- タブ中身 -->
@@ -203,11 +328,9 @@
         <!-- 1. 探すタブ -->
         <div id="tab-list" class="space-y-2.5">
           <div class="space-y-1.5">
-            <input id="search-input" type="text" placeholder="建築名・設計者・エリアで検索"
-              class="w-full bg-neutral-50 border border-neutral-300 rounded-md px-3 py-1.5 text-xs text-neutral-900 placeholder-neutral-400 focus:outline-none focus:border-neutral-900" />
+            <input id="search-input" type="text" placeholder="建築名・設計者・エリアで検索" class="ui-input w-full px-3 py-1.5" />
             <div class="flex gap-1.5">
-              <select id="series-filter" aria-label="シリーズ絞り込み"
-                class="flex-1 bg-neutral-50 border border-neutral-300 rounded-md px-2 py-1.5 text-xs text-neutral-900 focus:outline-none focus:border-neutral-900">
+              <select id="series-filter" aria-label="シリーズ絞り込み" class="ui-select flex-1 px-2 py-1.5">
                 <option value="all">京都編 すべて</option>
                 <option value="京都編1">京都編1（洛北・15）</option>
                 <option value="京都編2">京都編2（北白川〜岡崎・10）</option>
@@ -216,31 +339,39 @@
                 <option value="京都編5">京都編5（中京区・16）</option>
                 <option value="京都編6">京都編6（北・右京・西京・南・下京・21）</option>
               </select>
-              <select id="sort-select" aria-label="並び替え"
-                class="flex-1 bg-neutral-50 border border-neutral-300 rounded-md px-2 py-1.5 text-xs text-neutral-900 focus:outline-none focus:border-neutral-900">
+              <select id="sort-select" aria-label="並び替え" class="ui-select flex-1 px-2 py-1.5">
                 <option value="default">記事順（1〜92）</option>
                 <option value="year-asc">年代順（古い順）</option>
                 <option value="year-desc">年代順（新しい順）</option>
               </select>
             </div>
           </div>
+
+          <!-- noteマガジンへの導線 -->
+          <div class="flex items-center justify-between text-[11px] px-1" style="color: var(--text-sub);">
+            <span>京都編1〜6 建築アーカイブ</span>
+            <a href="https://note.com/aulora/m/m82e9d0285e88" target="_blank" rel="noopener" class="underline font-medium" style="color: var(--text-main);">
+              noteマガジンを見る ↗
+            </a>
+          </div>
+
           <div id="spot-list" class="space-y-1.5"></div>
         </div>
 
         <!-- 2. 詳細タブ -->
         <div id="tab-detail" class="hidden space-y-3">
-          <div id="detail-empty" class="text-xs text-neutral-500 py-8 text-center">
+          <div id="detail-empty" class="text-xs py-8 text-center" style="color: var(--text-muted);">
             地図上のピンまたは「探す」から建築を選ぶと詳細が表示されます。
           </div>
+
           <div id="detail-body" class="hidden space-y-3">
             <div class="flex items-start justify-between gap-2">
               <div>
-                <span id="detail-series" class="inline-block text-[10px] font-medium px-2 py-0.5 rounded bg-neutral-900 text-white mb-1.5"></span>
-                <h2 id="detail-name" class="text-base font-bold text-neutral-900 leading-snug"></h2>
-                <p id="detail-meta" class="text-xs text-neutral-600 mt-1 leading-relaxed"></p>
+                <span id="detail-series" class="inline-block text-[10px] font-semibold px-2 py-0.5 rounded mb-1.5" style="background: var(--accent-bg); color: var(--accent-text);"></span>
+                <h2 id="detail-name" class="text-base font-bold leading-snug"></h2>
+                <p id="detail-meta" class="text-xs mt-1 leading-relaxed" style="color: var(--text-sub);"></p>
               </div>
-              <button id="btn-close-detail" type="button"
-                class="text-xs px-2.5 py-1 rounded bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border border-neutral-300 shrink-0">
+              <button id="btn-close-detail" type="button" class="ui-btn-secondary text-xs px-2.5 py-1 shrink-0">
                 閉じる
               </button>
             </div>
@@ -249,50 +380,85 @@
             <div id="detail-photos" class="hidden"></div>
 
             <!-- ひとことメモ -->
-            <p id="detail-memo" class="text-xs text-neutral-700 leading-relaxed bg-neutral-50 p-3 rounded-md border border-neutral-200"></p>
+            <p id="detail-memo" class="ui-card text-xs leading-relaxed p-3" style="color: var(--text-main);"></p>
+
+            <!-- アクションボタン：note記事 & Googleマップ -->
+            <div class="grid grid-cols-2 gap-2">
+              <a id="btn-note-link" href="#" target="_blank" rel="noopener"
+                class="ui-btn-primary text-xs py-2 px-2.5 text-center block">
+                noteで解説を読む ↗
+              </a>
+              <a id="btn-gmap-single" href="#" target="_blank" rel="noopener"
+                class="ui-btn-secondary text-xs py-2 px-2.5 text-center font-medium block">
+                Googleマップで開く ↗
+              </a>
+            </div>
+
+            <!-- 2地点ルートへのショートカット -->
+            <div class="grid grid-cols-2 gap-2">
+              <button id="btn-set-origin" type="button" class="ui-btn-secondary text-[11px] py-1.5 px-2">
+                ここを出発地にする
+              </button>
+              <button id="btn-set-dest" type="button" class="ui-btn-secondary text-[11px] py-1.5 px-2">
+                ここを目的地にする
+              </button>
+            </div>
 
             <!-- 同じ設計者の作品（竣工年順） -->
-            <div id="same-architect-box" class="hidden pt-3 border-t border-neutral-200 space-y-2">
+            <div id="same-architect-box" class="hidden pt-3 space-y-2" style="border-top: 1px solid var(--border-soft);">
               <div id="same-architect-list" class="space-y-2.5"></div>
             </div>
           </div>
         </div>
 
         <!-- 3. 2地点ルートタブ -->
-        <div id="tab-route" class="hidden space-y-2.5">
-          <div>
-            <label class="block text-[11px] font-medium text-neutral-600 mb-1">出発地</label>
-            <select id="route-from" class="w-full bg-neutral-50 border border-neutral-300 rounded-md px-2.5 py-1.5 text-xs text-neutral-900"></select>
+        <div id="tab-route" class="hidden space-y-3">
+          <div class="space-y-2">
+            <div>
+              <label class="block text-[11px] font-medium mb-1" style="color: var(--text-sub);">出発地</label>
+              <select id="route-from" class="ui-select w-full px-2.5 py-1.5"></select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium mb-1" style="color: var(--text-sub);">目的地</label>
+              <select id="route-to" class="ui-select w-full px-2.5 py-1.5"></select>
+            </div>
+            <div class="flex gap-2">
+              <button id="btn-calc-route" type="button" class="ui-btn-primary flex-1 text-xs py-2">
+                移動時間・ルートを表示
+              </button>
+              <button id="btn-swap-route" type="button" class="ui-btn-secondary px-2.5 text-xs" title="出発と目的を入替">
+                ⇅
+              </button>
+              <button id="btn-clear-route" type="button" class="ui-btn-secondary px-3 text-xs">
+                消去
+              </button>
+            </div>
           </div>
-          <div>
-            <label class="block text-[11px] font-medium text-neutral-600 mb-1">目的地</label>
-            <select id="route-to" class="w-full bg-neutral-50 border border-neutral-300 rounded-md px-2.5 py-1.5 text-xs text-neutral-900"></select>
-          </div>
-          <div class="flex gap-2">
-            <button id="btn-calc-route" type="button"
-              class="flex-1 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-semibold py-2 rounded-md">
-              直線距離・ライン表示
-            </button>
-            <button id="btn-clear-route" type="button"
-              class="px-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs rounded-md border border-neutral-300">
-              消去
-            </button>
-          </div>
-          <div id="route-result" class="text-xs text-neutral-800 bg-neutral-50 p-3 rounded-md border border-neutral-200 hidden"></div>
+
+          <div id="route-result" class="ui-card p-3 space-y-2.5 text-xs hidden"></div>
         </div>
       </div>
     </div>
   </div>
 
   <script>
+    // 各シリーズのnote記事URL
+    const NOTE_URLS = {
+      "京都編1": "https://note.com/aulora/n/nd23fc113ecee",
+      "京都編2": "https://note.com/aulora/n/nd24a98eb992e",
+      "京都編3": "https://note.com/aulora/n/n051d04d5c3af",
+      "京都編4": "https://note.com/aulora/n/n4816c5d0b48a",
+      "京都編5": "https://note.com/aulora/n/n70f60b785daf",
+      "京都編6": "https://note.com/aulora/m/m82e9d0285e88" // ※京都編6の個別URLがあればここを差し替え
+    };
+
     // 京都編1〜6 全92スポット（原典準拠）
-    // photos: ["./images/xxx.jpg"] のように配列で1〜2枚指定可能
     const SPOTS = [
       // ==================== 京都編1（洛北エリア：15件） ====================
       { id: 1, series: "京都編1", orderInSeries: "1", name: "鈍考 donkou / 喫茶 芳 Kissa Fang", architect: "堀部安嗣", architectKeys: ["堀部安嗣"], year: 2023, yearLabel: "2023年竣工", area: "左京区", lat: 35.0631, lng: 135.7995, memo: "深い軒が作る影とプロポーションが視覚的な平穏をもたらす空間。本と珈琲、建築に浸れる。", photos: [] },
       { id: 2, series: "京都編1", orderInSeries: "2", name: "瑠璃光院", architect: "不詳", architectKeys: [], year: 1926, yearLabel: "大正末期〜昭和初期造営", area: "左京区", lat: 35.0659, lng: 135.8105, memo: "数寄屋造りの建物から眺める瑠璃の庭。2階の窓枠が景色を絵画のように切り取る。", photos: [] },
-      { id: 3, series: "京都編1", orderInSeries: "3", name: "国立京都国際会館", architect: "大谷幸夫", architectKeys: ["大谷幸夫"], year: 1966, yearLabel: "1966年竣工", area: "左京区", lat: 35.0695, lng: 135.7847, memo: "山並みに合わせた斜めの造形が自然と力強く応答する、現代の神殿のような巨大建築。", photos: [] },
-      { id: 4, series: "京都編1", orderInSeries: "4", name: "ザ・プリンス 京都宝ヶ池", architect: "村野藤吾", architectKeys: ["村野藤吾"], year: 1986, yearLabel: "1986年竣工", area: "左京区", lat: 35.0652, lng: 135.7863, memo: "円形を基調とした柔らかな曲線と繊細なディテールで包み込む、村野藤吾晩年の傑作ホテル。", photos: [] },
+      { id: 3, series: "京都編1", orderInSeries: "3", name: "国立京都国際会館", architect: "大谷幸夫", architectKeys: ["大谷幸夫"], year: 1966, yearLabel: "1966年竣工", area: "左京区", lat: 35.0604, lng: 135.7824, memo: "山並みに合わせた斜めの造形が自然と力強く応答する、現代の神殿のような巨大建築。", photos: [] },
+      { id: 4, series: "京都編1", orderInSeries: "4", name: "ザ・プリンス 京都宝ヶ池", architect: "村野藤吾", architectKeys: ["村野藤吾"], year: 1986, yearLabel: "1986年竣工", area: "左京区", lat: 35.0620, lng: 135.7819, memo: "円形を基調とした柔らかな曲線と繊細なディテールで包み込む、村野藤吾晩年の傑作ホテル。", photos: [] },
       { id: 5, series: "京都編1", orderInSeries: "5", name: "圓通寺", architect: "不詳", architectKeys: [], year: 1639, yearLabel: "江戸時代初期造営", area: "左京区", lat: 35.0657, lng: 135.7704, memo: "生垣を額縁に見立て比叡山を取り込む借景庭園の最高峰。杉の幹が垂直のグリッドとなる。", photos: [] },
       { id: 6, series: "京都編1", orderInSeries: "6", name: "修学院離宮", architect: "後水尾上皇", architectKeys: ["後水尾上皇"], year: 1659, yearLabel: "1659年造営", area: "左京区", lat: 35.0532, lng: 135.8003, memo: "上・中・下の3つの茶屋からなる広大な離宮。浴龍池回遊時の視界の絞りと開放が見事。", photos: [] },
       { id: 7, series: "京都編1", orderInSeries: "7", name: "無光虹（旧修学院の家Ⅱ）", architect: "高松伸", architectKeys: ["高松伸"], year: 1985, yearLabel: "1985年竣工", area: "左京区", lat: 35.0525, lng: 135.7897, memo: "ポストモダン建築を牽引した高松伸の初期住宅がアートカフェ・ギャラリーとして再生。", photos: [] },
@@ -393,6 +559,26 @@
       { id: 92, series: "京都編6", orderInSeries: "21", name: "京都駅", architect: "原広司", architectKeys: ["原広司"], year: 1997, yearLabel: "1997年竣工", area: "下京区", lat: 34.9858, lng: 135.7588, memo: "長さ470m・高さ60mの4000枚のガラス屋根に覆われた現代の巨大な谷。質量の暴力と美しさが同居。", photos: [] }
     ];
 
+    // ダーク／ライトモード管理
+    const btnTheme = document.getElementById("btn-theme");
+    function applyTheme(isDark) {
+      document.body.classList.toggle("dark-mode", isDark);
+      btnTheme.textContent = isDark ? "ライト" : "ダーク";
+      try { localStorage.setItem("kyoto-map-theme", isDark ? "dark" : "light"); } catch (_) {}
+    }
+    const savedTheme = (() => { try { return localStorage.getItem("kyoto-map-theme"); } catch (_) { return null; } })();
+    applyTheme(savedTheme === "dark");
+    btnTheme.addEventListener("click", () => {
+      applyTheme(!document.body.classList.contains("dark-mode"));
+    });
+
+    // 座標修正モード判定（?edit=1）
+    const isEditMode = new URLSearchParams(window.location.search).get("edit") === "1";
+    const editedIds = new Set();
+    if (isEditMode) {
+      document.getElementById("edit-bar").classList.remove("hidden");
+    }
+
     // 地図レイヤー（初期設定：航空写真）
     const layers = {
       photo: L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg", {
@@ -428,12 +614,38 @@
         iconSize: [26, 26],
         iconAnchor: [13, 13]
       });
-      const marker = L.marker([spot.lat, spot.lng], { icon }).addTo(map);
+      const marker = L.marker([spot.lat, spot.lng], { icon, draggable: isEditMode }).addTo(map);
       marker.on("click", () => selectSpot(spot.id, { openSheet: true, flyTo: false }));
+
+      if (isEditMode) {
+        marker.on("dragend", () => {
+          const pos = marker.getLatLng();
+          spot.lat = Number(pos.lat.toFixed(6));
+          spot.lng = Number(pos.lng.toFixed(6));
+          editedIds.add(spot.id);
+          const el = document.getElementById(`marker-${spot.id}`);
+          if (el) el.classList.add("edited");
+          document.getElementById("edit-count").textContent =
+            `#${spot.id} ${spot.name} を更新（変更計: ${editedIds.size}件）`;
+        });
+      }
       markersById.set(spot.id, marker);
     });
 
-    // スマホ用シート開閉（初期状態は地図が広い）
+    // 修正済みSPOTS配列コピー機能
+    if (isEditMode) {
+      document.getElementById("btn-copy-spots").addEventListener("click", async () => {
+        const output = "const SPOTS = " + JSON.stringify(SPOTS, null, 2) + ";";
+        try {
+          await navigator.clipboard.writeText(output);
+          document.getElementById("edit-count").textContent = `コピー完了！（変更計: ${editedIds.size}件）`;
+        } catch (_) {
+          prompt("以下をコピーして index.html の SPOTS に貼り付けてください:", output);
+        }
+      });
+    }
+
+    // スマホ用シート開閉
     const mapStage = document.getElementById("map-stage");
     const btnToggleSheet = document.getElementById("btn-toggle-sheet");
     const sheetHandleBar = document.getElementById("sheet-handle-bar");
@@ -463,18 +675,8 @@
     };
 
     function switchTab(tabName) {
-      tabBtns.forEach((btn) => {
-        const isTarget = btn.dataset.tab === tabName;
-        btn.classList.toggle("text-neutral-900", isTarget);
-        btn.classList.toggle("font-bold", isTarget);
-        btn.classList.toggle("border-neutral-900", isTarget);
-        btn.classList.toggle("text-neutral-400", !isTarget);
-        btn.classList.toggle("font-semibold", !isTarget);
-        btn.classList.toggle("border-transparent", !isTarget);
-      });
-      Object.entries(tabPanels).forEach(([key, panel]) => {
-        panel.classList.toggle("hidden", key !== tabName);
-      });
+      tabBtns.forEach((btn) => btn.classList.toggle("active", btn.dataset.tab === tabName));
+      Object.entries(tabPanels).forEach(([key, panel]) => panel.classList.toggle("hidden", key !== tabName));
     }
 
     tabBtns.forEach((btn) => {
@@ -508,7 +710,6 @@
         return matchSeries && matchQuery;
       });
 
-      // 並び替え（年代不明は常に末尾）
       if (sortMode === "year-asc") {
         filtered = [...filtered].sort((a, b) => {
           if (a.year === null && b.year === null) return a.id - b.id;
@@ -525,7 +726,6 @@
         });
       }
 
-      // 地図上のマーカーも絞り込みに連動
       const visibleIds = new Set(filtered.map((s) => s.id));
       SPOTS.forEach((s) => {
         const m = markersById.get(s.id);
@@ -541,32 +741,23 @@
       filtered.forEach((s) => {
         const item = document.createElement("button");
         item.type = "button";
-        const isActive = s.id === activeSpotId;
-        item.className =
-          "w-full text-left px-3 py-2 rounded-md border transition flex items-center justify-between gap-2 " +
-          (isActive
-            ? "bg-neutral-900 border-neutral-900 text-white"
-            : "bg-white hover:bg-neutral-50 border-neutral-200 text-neutral-900");
+        item.className = "spot-item" + (s.id === activeSpotId ? " active" : "");
         item.innerHTML = `
           <div class="min-w-0">
             <div class="text-xs font-bold truncate">${s.id}. ${s.name}</div>
-            <div class="text-[11px] ${isActive ? "text-neutral-300" : "text-neutral-500"} truncate mt-0.5">
-              ${s.yearLabel} · ${s.architect}
-            </div>
+            <div class="text-[11px] sub truncate mt-0.5">${s.yearLabel} · ${s.architect}</div>
           </div>
           <div class="text-right shrink-0">
-            <div class="text-[10px] font-medium ${isActive ? "text-neutral-300" : "text-neutral-500"}">${s.series}</div>
-            <div class="text-[10px] ${isActive ? "text-neutral-400" : "text-neutral-400"}">${s.area}</div>
+            <div class="text-[10px] font-medium sub">${s.series}</div>
+            <div class="text-[10px] sub">${s.area}</div>
           </div>
         `;
-        item.addEventListener("click", () => {
-          selectSpot(s.id, { openSheet: true, flyTo: true });
-        });
+        item.addEventListener("click", () => selectSpot(s.id, { openSheet: true, flyTo: true }));
         spotListEl.appendChild(item);
       });
     }
 
-    // 詳細表示＆同じ設計者の作品（竣工年順）
+    // 詳細表示
     const detailEmpty = document.getElementById("detail-empty");
     const detailBody = document.getElementById("detail-body");
     const detailSeries = document.getElementById("detail-series");
@@ -574,6 +765,8 @@
     const detailMeta = document.getElementById("detail-meta");
     const detailPhotos = document.getElementById("detail-photos");
     const detailMemo = document.getElementById("detail-memo");
+    const btnNoteLink = document.getElementById("btn-note-link");
+    const btnGmapSingle = document.getElementById("btn-gmap-single");
     const sameArchitectBox = document.getElementById("same-architect-box");
     const sameArchitectList = document.getElementById("same-architect-list");
 
@@ -592,7 +785,7 @@
       sheetStatusLabel.textContent = `${spot.id}. ${spot.name}`;
 
       if (flyTo) {
-        map.setView([spot.lat, spot.lng], Math.max(map.getZoom(), 14), { animate: true });
+        map.setView([spot.lat, spot.lng], Math.max(map.getZoom(), 15), { animate: true });
       }
 
       detailEmpty.classList.add("hidden");
@@ -601,6 +794,14 @@
       detailName.textContent = spot.name;
       detailMeta.textContent = `設計・造営：${spot.architect} ／ ${spot.yearLabel} ／ ${spot.area}`;
       detailMemo.textContent = spot.memo || "";
+
+      // note記事リンク
+      const noteUrl = NOTE_URLS[spot.series] || "https://note.com/aulora/m/m82e9d0285e88";
+      btnNoteLink.href = noteUrl;
+      btnNoteLink.textContent = `noteで読む（${spot.series}）↗`;
+
+      // 単体Googleマップリンク（施設名＋京都で検索して確実にヒットさせる）
+      btnGmapSingle.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(spot.name + " 京都")}`;
 
       // 写真（1〜2枚、指定がある場合のみ表示）
       detailPhotos.innerHTML = "";
@@ -613,7 +814,8 @@
           img.src = src;
           img.alt = spot.name;
           img.loading = "lazy";
-          img.className = "w-full h-36 object-cover rounded-md border border-neutral-200 bg-neutral-100";
+          img.className = "w-full h-36 object-cover rounded-md border";
+          img.style.borderColor = "var(--border-soft)";
           img.onerror = () => img.remove();
           detailPhotos.appendChild(img);
         });
@@ -621,7 +823,7 @@
         detailPhotos.classList.add("hidden");
       }
 
-      // 同じ設計者の作品（複数キーがある場合は設計者ごとにグルーピングして竣工年順に表示）
+      // 同じ設計者の作品（竣工年順）
       sameArchitectList.innerHTML = "";
       const keys = Array.isArray(spot.architectKeys) ? spot.architectKeys : [];
       let hasAnyGroup = false;
@@ -637,29 +839,21 @@
           groupWrap.className = "space-y-1";
 
           const heading = document.createElement("h3");
-          heading.className = "text-xs font-bold text-neutral-900";
+          heading.className = "text-xs font-bold";
           heading.textContent = `同じ設計者の作品（${archKey}・竣工年順）`;
           groupWrap.appendChild(heading);
 
           works.forEach((w) => {
             const btn = document.createElement("button");
             btn.type = "button";
-            const isCurrent = w.id === spot.id;
-            btn.className =
-              "w-full text-left px-2.5 py-1.5 rounded-md text-xs flex items-center justify-between border transition " +
-              (isCurrent
-                ? "bg-neutral-900 border-neutral-900 text-white font-semibold"
-                : "bg-neutral-50 hover:bg-neutral-100 border-neutral-200 text-neutral-800");
+            btn.className = "spot-item text-xs" + (w.id === spot.id ? " active" : "");
             btn.innerHTML = `
               <span class="truncate">${w.id}. ${w.name}</span>
-              <span class="text-[11px] ${isCurrent ? "text-neutral-300" : "text-neutral-500"} shrink-0 ml-2">${w.year ? w.year + "年" : "—"}</span>
+              <span class="text-[11px] sub shrink-0 ml-2">${w.year ? w.year + "年" : "—"}</span>
             `;
-            btn.addEventListener("click", () => {
-              selectSpot(w.id, { openSheet: true, flyTo: true });
-            });
+            btn.addEventListener("click", () => selectSpot(w.id, { openSheet: true, flyTo: true }));
             groupWrap.appendChild(btn);
           });
-
           sameArchitectList.appendChild(groupWrap);
         }
       });
@@ -678,6 +872,26 @@
       setMapExpanded(true);
     });
 
+    // 詳細から2地点ルートへ送るボタン
+    const routeFrom = document.getElementById("route-from");
+    const routeTo = document.getElementById("route-to");
+    const routeResult = document.getElementById("route-result");
+
+    document.getElementById("btn-set-origin").addEventListener("click", () => {
+      if (activeSpotId === null) return;
+      routeFrom.value = String(activeSpotId);
+      switchTab("route");
+      setMapExpanded(false);
+    });
+
+    document.getElementById("btn-set-dest").addEventListener("click", () => {
+      if (activeSpotId === null) return;
+      routeTo.value = String(activeSpotId);
+      switchTab("route");
+      setMapExpanded(false);
+      calcAndShowRoute();
+    });
+
     // 地図レイヤー切替＆全体表示
     const layerSelect = document.getElementById("layer-select");
     let currentLayer = layers.photo;
@@ -694,11 +908,7 @@
       map.fitBounds(group.getBounds().pad(0.08));
     });
 
-    // 2地点ルート（直線距離・ライン表示）
-    const routeFrom = document.getElementById("route-from");
-    const routeTo = document.getElementById("route-to");
-    const routeResult = document.getElementById("route-result");
-
+    // 2地点ルート（電車・車・徒歩の目安時間＋Googleマップ連携）
     SPOTS.forEach((s) => {
       routeFrom.add(new Option(`${s.id}. ${s.name}`, s.id));
       routeTo.add(new Option(`${s.id}. ${s.name}`, s.id));
@@ -716,7 +926,21 @@
       return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
     }
 
-    document.getElementById("btn-calc-route").addEventListener("click", () => {
+    function formatMin(min) {
+      const m = Math.max(1, Math.round(min));
+      if (m < 60) return `約${m}分`;
+      const h = Math.floor(m / 60);
+      const rem = m % 60;
+      return rem === 0 ? `約${h}時間` : `約${h}時間${rem}分`;
+    }
+
+    function buildGmapsDirUrl(sA, sB, mode) {
+      const origin = encodeURIComponent(`${sA.name} 京都`);
+      const dest = encodeURIComponent(`${sB.name} 京都`);
+      return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&travelmode=${mode}`;
+    }
+
+    function calcAndShowRoute() {
       const sA = SPOTS.find((s) => s.id === Number(routeFrom.value));
       const sB = SPOTS.find((s) => s.id === Number(routeTo.value));
       if (!sA || !sB) return;
@@ -729,13 +953,65 @@
         opacity: 0.95
       }).addTo(map);
 
-      map.fitBounds(routeLine.getBounds().pad(0.2));
-      const dist = calcDistanceKm(sA, sB);
+      map.fitBounds(routeLine.getBounds().pad(0.25));
+
+      // 実道路の迂回係数を掛けた概算所要時間
+      const straightKm = calcDistanceKm(sA, sB);
+      const roadKm = straightKm * 1.25;
+      const transitMin = (roadKm / 18) * 60 + 8; // 電車・バス＋乗換待ち目安
+      const driveMin = (roadKm / 22) * 60 + 3;   // 京都市内の車移動目安
+      const walkMin = (roadKm / 4.5) * 60;       // 徒歩目安
+
       routeResult.classList.remove("hidden");
       routeResult.innerHTML = `
-        <div class="font-bold text-neutral-900">${sA.name} → ${sB.name}</div>
-        <div class="mt-1 text-neutral-600">直線距離：約 ${dist.toFixed(2)} km</div>
+        <div>
+          <div class="font-bold text-xs">${sA.id}. ${sA.name}</div>
+          <div class="text-[11px] my-0.5" style="color: var(--text-muted);">↓ 道のり目安 約 ${roadKm.toFixed(1)} km</div>
+          <div class="font-bold text-xs">${sB.id}. ${sB.name}</div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-1.5 text-center pt-1">
+          <div class="p-2 rounded border" style="background: var(--bg-main); border-color: var(--border-soft);">
+            <div class="text-[10px]" style="color: var(--text-sub);">電車・バス</div>
+            <div class="font-bold text-xs mt-0.5">${formatMin(transitMin)}</div>
+          </div>
+          <div class="p-2 rounded border" style="background: var(--bg-main); border-color: var(--border-soft);">
+            <div class="text-[10px]" style="color: var(--text-sub);">車</div>
+            <div class="font-bold text-xs mt-0.5">${formatMin(driveMin)}</div>
+          </div>
+          <div class="p-2 rounded border" style="background: var(--bg-main); border-color: var(--border-soft);">
+            <div class="text-[10px]" style="color: var(--text-sub);">徒歩</div>
+            <div class="font-bold text-xs mt-0.5">${formatMin(walkMin)}</div>
+          </div>
+        </div>
+
+        <div class="space-y-1.5 pt-1">
+          <a href="${buildGmapsDirUrl(sA, sB, "transit")}" target="_blank" rel="noopener"
+            class="ui-btn-primary block text-center py-2 text-xs">
+            Googleマップで経路を見る（電車・バス）↗
+          </a>
+          <div class="grid grid-cols-2 gap-1.5">
+            <a href="${buildGmapsDirUrl(sA, sB, "driving")}" target="_blank" rel="noopener"
+              class="ui-btn-secondary block text-center py-1.5 text-[11px] font-medium">
+              車ルートを開く ↗
+            </a>
+            <a href="${buildGmapsDirUrl(sA, sB, "walking")}" target="_blank" rel="noopener"
+              class="ui-btn-secondary block text-center py-1.5 text-[11px] font-medium">
+              徒歩ルートを開く ↗
+            </a>
+          </div>
+        </div>
+        <div class="text-[10px]" style="color: var(--text-muted);">※目安時間です。正確な時刻表・乗換は上のGoogleマップボタンからご確認ください。</div>
       `;
+    }
+
+    document.getElementById("btn-calc-route").addEventListener("click", calcAndShowRoute);
+
+    document.getElementById("btn-swap-route").addEventListener("click", () => {
+      const tmp = routeFrom.value;
+      routeFrom.value = routeTo.value;
+      routeTo.value = tmp;
+      if (!routeResult.classList.contains("hidden")) calcAndShowRoute();
     });
 
     document.getElementById("btn-clear-route").addEventListener("click", () => {
