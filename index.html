@@ -403,15 +403,26 @@
           </div>
 
           <div id="detail-body" class="hidden space-y-2.5">
-            <div class="flex items-start justify-between gap-2">
-              <div>
-                <span id="detail-series" class="inline-block text-[10px] font-semibold px-2 py-0.5 rounded mb-1" style="background: var(--accent-bg); color: var(--accent-text);"></span>
-                <h2 id="detail-name" class="text-base font-bold leading-snug"></h2>
-                <p id="detail-meta" class="text-xs mt-0.5 leading-relaxed" style="color: var(--text-sub);"></p>
+            <!-- 上段：シリーズバッジ＋前後送り＆閉じるボタン -->
+            <div class="flex items-center justify-between gap-2">
+              <span id="detail-series" class="inline-block text-[10px] font-semibold px-2 py-0.5 rounded truncate" style="background: var(--accent-bg); color: var(--accent-text);"></span>
+              <div class="flex items-center gap-1 shrink-0">
+                <button id="btn-prev-spot" type="button" class="ui-btn-secondary text-xs px-2.5 py-1 font-semibold" title="前のスポットへ" aria-label="前のスポットへ">
+                  ◁
+                </button>
+                <button id="btn-next-spot" type="button" class="ui-btn-secondary text-xs px-2.5 py-1 font-semibold" title="次のスポットへ" aria-label="次のスポットへ">
+                  ▷
+                </button>
+                <button id="btn-close-detail" type="button" class="ui-btn-secondary text-xs px-2.5 py-1">
+                  閉じる
+                </button>
               </div>
-              <button id="btn-close-detail" type="button" class="ui-btn-secondary text-xs px-2.5 py-1 shrink-0">
-                閉じる
-              </button>
+            </div>
+
+            <!-- 建築名・メタ情報 -->
+            <div>
+              <h2 id="detail-name" class="text-base font-bold leading-snug"></h2>
+              <p id="detail-meta" class="text-xs mt-0.5 leading-relaxed" style="color: var(--text-sub);"></p>
             </div>
 
             <!-- 写真表示エリア（最大2枚・コンパクト表示＋タップで全画面拡大） -->
@@ -500,6 +511,15 @@
   </div>
 
   <script>
+    // エリア設定（将来の全国版統合を見据えた識別子・画像ルール定義）
+    const REGION_CONFIG = {
+      regionCode: "kyoto",
+      imageDir: "./kyoto-images",
+      imagePrefix: "kyoto",
+      imageExt: "jpeg",
+      maxPhotosPerSpot: 2
+    };
+
     // 各シリーズのnote記事URL
     const NOTE_URLS = {
       "京都編1": "https://note.com/aulora/n/nd23fc113ecee",
@@ -510,7 +530,7 @@
       "京都編6": "https://note.com/aulora/n/n680bf7739786?magazine_key=m82e9d0285e88"
     };
 
-    // 京都編1〜6 全92スポット（座標修正済み・1〜5番写真設定済み）
+    // 京都編1〜6 全92スポット（座標修正済み・写真は全件自動ルール参照）
     const SPOTS = [
       {
         "id": 1,
@@ -1894,6 +1914,25 @@
       }
     ];
 
+    // 将来の全国版を見据え、各スポットに地域コードと自動写真パス（最大2枚）を付与
+    function getAutoPhotoPaths(spot) {
+      const num = String(spot.id).padStart(2, "0");
+      const autoList = [];
+      for (let i = 1; i <= REGION_CONFIG.maxPhotosPerSpot; i++) {
+        autoList.push(`${REGION_CONFIG.imageDir}/${REGION_CONFIG.imagePrefix}-${num}-${i}.${REGION_CONFIG.imageExt}`);
+      }
+      const manual = Array.isArray(spot.photos) ? spot.photos.filter(Boolean) : [];
+      return Array.from(new Set([...manual, ...autoList])).slice(0, REGION_CONFIG.maxPhotosPerSpot);
+    }
+
+    SPOTS.forEach((spot) => {
+      if (!spot.region) spot.region = REGION_CONFIG.regionCode;
+      spot.photos = getAutoPhotoPaths(spot);
+    });
+
+    // 詳細画面「前へ・次へ」の送り順リスト（基本は1〜92の番号順・全国版時もここを切り替えるだけで対応可能）
+    const NAV_SPOTS = [...SPOTS].sort((a, b) => a.id - b.id);
+
     // ダーク／ライトモード管理
     const btnTheme = document.getElementById("btn-theme");
     function applyTheme(isDark) {
@@ -1940,6 +1979,7 @@
     const markersById = new Map();
     let activeSpotId = null;
     let routeLine = null;
+    let photoRenderToken = 0;
 
     // マーカー生成
     SPOTS.forEach((spot) => {
@@ -2060,10 +2100,19 @@
       renderLightbox();
     });
     document.addEventListener("keydown", (e) => {
-      if (lightbox.classList.contains("hidden")) return;
-      if (e.key === "Escape") closeLightbox();
-      if (e.key === "ArrowLeft" && lbPhotos.length > 1) lbPrev.click();
-      if (e.key === "ArrowRight" && lbPhotos.length > 1) lbNext.click();
+      if (!lightbox.classList.contains("hidden")) {
+        if (e.key === "Escape") closeLightbox();
+        if (e.key === "ArrowLeft" && lbPhotos.length > 1) lbPrev.click();
+        if (e.key === "ArrowRight" && lbPhotos.length > 1) lbNext.click();
+        return;
+      }
+      // 詳細タブ表示中かつ入力欄フォーカス外なら、キーボード左右キーでもスポット送り可能
+      const tag = document.activeElement?.tagName;
+      if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+      if (!tabPanels.detail.classList.contains("hidden") && activeSpotId !== null) {
+        if (e.key === "ArrowLeft") stepSpot(-1);
+        if (e.key === "ArrowRight") stepSpot(1);
+      }
     });
 
     // タブ切替
@@ -2130,7 +2179,8 @@
       SPOTS.forEach((s) => {
         const m = markersById.get(s.id);
         if (!m) return;
-        const shouldShow = visibleIds.has(s.id);
+        // 絞り込み中も、前後ボタン等で現在選択中のスポットピンは必ず地図上に残す
+        const shouldShow = visibleIds.has(s.id) || s.id === activeSpotId;
         if (shouldShow && !map.hasLayer(m)) m.addTo(map);
         if (!shouldShow && map.hasLayer(m)) map.removeLayer(m);
       });
@@ -2170,6 +2220,55 @@
     const sameArchitectBox = document.getElementById("same-architect-box");
     const sameArchitectList = document.getElementById("same-architect-list");
 
+    // 実際に存在する写真だけを判定して表示（1枚なら横長1枚、2枚なら2列、0枚なら枠ごと非表示）
+    function renderSpotPhotos(spot) {
+      const token = ++photoRenderToken;
+      detailPhotos.innerHTML = "";
+      detailPhotos.classList.add("hidden");
+
+      const candidates = Array.isArray(spot.photos) ? spot.photos.filter(Boolean).slice(0, REGION_CONFIG.maxPhotosPerSpot) : [];
+      if (candidates.length === 0) return;
+
+      const checks = candidates.map((src) => new Promise((resolve) => {
+        const probe = new Image();
+        probe.onload = () => resolve(src);
+        probe.onerror = () => resolve(null);
+        probe.src = src;
+      }));
+
+      Promise.all(checks).then((results) => {
+        if (token !== photoRenderToken) return;
+        const available = results.filter(Boolean);
+        if (available.length === 0) {
+          detailPhotos.classList.add("hidden");
+          return;
+        }
+
+        detailPhotos.innerHTML = "";
+        detailPhotos.className = available.length === 1 ? "grid grid-cols-1 gap-2" : "grid grid-cols-2 gap-2";
+
+        available.forEach((src, idx) => {
+          const wrap = document.createElement("div");
+          wrap.className = "photo-thumb-wrap h-24 md:h-32";
+          wrap.title = "タップで拡大表示";
+
+          const img = document.createElement("img");
+          img.src = src;
+          img.alt = `${spot.name} 写真${idx + 1}`;
+          img.loading = "lazy";
+
+          const badge = document.createElement("span");
+          badge.className = "photo-zoom-badge";
+          badge.textContent = "拡大";
+
+          wrap.appendChild(img);
+          wrap.appendChild(badge);
+          wrap.addEventListener("click", () => openLightbox(available, idx, spot.name));
+          detailPhotos.appendChild(wrap);
+        });
+      });
+    }
+
     function selectSpot(id, { openSheet = true, flyTo = true } = {}) {
       const spot = SPOTS.find((s) => s.id === id);
       if (!spot) return;
@@ -2179,6 +2278,12 @@
         if (prevEl) prevEl.classList.remove("active");
       }
       activeSpotId = spot.id;
+
+      // マーカーが非表示状態なら先に地図へ追加してからハイライトを当てる
+      const targetMarker = markersById.get(spot.id);
+      if (targetMarker && !map.hasLayer(targetMarker)) {
+        targetMarker.addTo(map);
+      }
       const currEl = document.getElementById(`marker-${spot.id}`);
       if (currEl) currEl.classList.add("active");
 
@@ -2203,35 +2308,8 @@
       // 単体Googleマップリンク
       btnGmapSingle.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(spot.name + " 京都")}`;
 
-      // 写真（最大2枚・コンパクト表示＋タップで全画面拡大）
-      detailPhotos.innerHTML = "";
-      const validPhotos = Array.isArray(spot.photos) ? spot.photos.filter(Boolean).slice(0, 2) : [];
-      if (validPhotos.length > 0) {
-        detailPhotos.classList.remove("hidden");
-        detailPhotos.className = validPhotos.length === 1 ? "grid grid-cols-1 gap-2" : "grid grid-cols-2 gap-2";
-        validPhotos.forEach((src, idx) => {
-          const wrap = document.createElement("div");
-          wrap.className = "photo-thumb-wrap h-24 md:h-32";
-          wrap.title = "タップで拡大表示";
-
-          const img = document.createElement("img");
-          img.src = src;
-          img.alt = `${spot.name} 写真${idx + 1}`;
-          img.loading = "lazy";
-          img.onerror = () => wrap.remove();
-
-          const badge = document.createElement("span");
-          badge.className = "photo-zoom-badge";
-          badge.textContent = "拡大";
-
-          wrap.appendChild(img);
-          wrap.appendChild(badge);
-          wrap.addEventListener("click", () => openLightbox(validPhotos, idx, spot.name));
-          detailPhotos.appendChild(wrap);
-        });
-      } else {
-        detailPhotos.classList.add("hidden");
-      }
+      // 写真（存在するファイルのみ自動表示）
+      renderSpotPhotos(spot);
 
       // 同じ設計者の作品（竣工年順）
       sameArchitectList.innerHTML = "";
@@ -2277,6 +2355,20 @@
       }
       renderList();
     }
+
+    // 前へ・次へ（1〜92シンプル循環＋地図連動）
+    function stepSpot(delta) {
+      if (NAV_SPOTS.length === 0) return;
+      const currentIdx = NAV_SPOTS.findIndex((s) => s.id === activeSpotId);
+      const nextIdx = currentIdx === -1
+        ? 0
+        : (currentIdx + delta + NAV_SPOTS.length) % NAV_SPOTS.length;
+      const nextSpot = NAV_SPOTS[nextIdx];
+      selectSpot(nextSpot.id, { openSheet: true, flyTo: true });
+    }
+
+    document.getElementById("btn-prev-spot").addEventListener("click", () => stepSpot(-1));
+    document.getElementById("btn-next-spot").addEventListener("click", () => stepSpot(1));
 
     document.getElementById("btn-close-detail").addEventListener("click", () => {
       switchTab("list");
