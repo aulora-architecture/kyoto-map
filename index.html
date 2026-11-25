@@ -41,6 +41,7 @@
     }
 
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    button:focus:not(:focus-visible) { outline: none; }
     html, body {
       margin: 0;
       padding: 0;
@@ -111,6 +112,7 @@
     #sheet-content {
       flex: 1;
       overflow-y: auto;
+      scrollbar-gutter: stable;
       padding: 12px 14px 28px;
       background: var(--bg-main);
     }
@@ -222,14 +224,41 @@
     .spot-item .sub { color: var(--text-sub); }
     .spot-item.active .sub { opacity: 0.78; color: var(--accent-text); }
 
-    /* 写真サムネイル */
+    /* 詳細上部操作バーの固定レイアウト */
+    .detail-nav-btn {
+      width: 32px;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .detail-close-btn {
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 10px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    /* 写真サムネイル（1枚・2枚で高さを完全統一） */
     .photo-thumb-wrap {
       position: relative;
+      height: 112px;
       overflow: hidden;
       border-radius: 6px;
       border: 1px solid var(--border-soft);
       background: var(--bg-card);
       cursor: zoom-in;
+    }
+    @media (min-width: 768px) {
+      .photo-thumb-wrap {
+        height: 136px;
+      }
     }
     .photo-thumb-wrap img {
       width: 100%;
@@ -403,17 +432,19 @@
           </div>
 
           <div id="detail-body" class="hidden space-y-2.5">
-            <!-- 上段：シリーズバッジ＋前後送り＆閉じるボタン -->
-            <div class="flex items-center justify-between gap-2">
-              <span id="detail-series" class="inline-block text-[10px] font-semibold px-2 py-0.5 rounded truncate" style="background: var(--accent-bg); color: var(--accent-text);"></span>
-              <div class="flex items-center gap-1 shrink-0">
-                <button id="btn-prev-spot" type="button" class="ui-btn-secondary text-xs px-2.5 py-1 font-semibold" title="前のスポットへ" aria-label="前のスポットへ">
+            <!-- 上段：左はシリーズバッジ、右は前後送り＆閉じるを常に右端固定 -->
+            <div class="flex items-center gap-2 w-full">
+              <div class="min-w-0 flex-1 overflow-hidden">
+                <span id="detail-series" class="inline-block max-w-full align-middle text-[10px] font-semibold px-2 py-0.5 rounded truncate whitespace-nowrap" style="background: var(--accent-bg); color: var(--accent-text);"></span>
+              </div>
+              <div class="ml-auto flex items-center gap-1 shrink-0">
+                <button id="btn-prev-spot" type="button" class="ui-btn-secondary detail-nav-btn text-xs font-semibold" title="前のスポットへ" aria-label="前のスポットへ">
                   ◁
                 </button>
-                <button id="btn-next-spot" type="button" class="ui-btn-secondary text-xs px-2.5 py-1 font-semibold" title="次のスポットへ" aria-label="次のスポットへ">
+                <button id="btn-next-spot" type="button" class="ui-btn-secondary detail-nav-btn text-xs font-semibold" title="次のスポットへ" aria-label="次のスポットへ">
                   ▷
                 </button>
-                <button id="btn-close-detail" type="button" class="ui-btn-secondary text-xs px-2.5 py-1">
+                <button id="btn-close-detail" type="button" class="ui-btn-secondary detail-close-btn text-xs">
                   閉じる
                 </button>
               </div>
@@ -425,7 +456,7 @@
               <p id="detail-meta" class="text-xs mt-0.5 leading-relaxed" style="color: var(--text-sub);"></p>
             </div>
 
-            <!-- 写真表示エリア（最大2枚・コンパクト表示＋タップで全画面拡大） -->
+            <!-- 写真表示エリア（最大2枚・高さ統一＋タップで全画面拡大） -->
             <div id="detail-photos" class="hidden"></div>
 
             <!-- ひとことメモ -->
@@ -2220,14 +2251,15 @@
     const sameArchitectBox = document.getElementById("same-architect-box");
     const sameArchitectList = document.getElementById("same-architect-list");
 
-    // 実際に存在する写真だけを判定して表示（1枚なら横長1枚、2枚なら2列、0枚なら枠ごと非表示）
+    // 実際に存在する写真だけを判定して表示（1枚・2枚とも同じ高さに統一、0枚なら枠ごと非表示）
     function renderSpotPhotos(spot) {
       const token = ++photoRenderToken;
-      detailPhotos.innerHTML = "";
-      detailPhotos.classList.add("hidden");
-
       const candidates = Array.isArray(spot.photos) ? spot.photos.filter(Boolean).slice(0, REGION_CONFIG.maxPhotosPerSpot) : [];
-      if (candidates.length === 0) return;
+      if (candidates.length === 0) {
+        detailPhotos.innerHTML = "";
+        detailPhotos.classList.add("hidden");
+        return;
+      }
 
       const checks = candidates.map((src) => new Promise((resolve) => {
         const probe = new Image();
@@ -2240,6 +2272,7 @@
         if (token !== photoRenderToken) return;
         const available = results.filter(Boolean);
         if (available.length === 0) {
+          detailPhotos.innerHTML = "";
           detailPhotos.classList.add("hidden");
           return;
         }
@@ -2249,7 +2282,7 @@
 
         available.forEach((src, idx) => {
           const wrap = document.createElement("div");
-          wrap.className = "photo-thumb-wrap h-24 md:h-32";
+          wrap.className = "photo-thumb-wrap";
           wrap.title = "タップで拡大表示";
 
           const img = document.createElement("img");
@@ -2308,7 +2341,7 @@
       // 単体Googleマップリンク
       btnGmapSingle.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(spot.name + " 京都")}`;
 
-      // 写真（存在するファイルのみ自動表示）
+      // 写真（存在するファイルのみ自動表示・高さ統一）
       renderSpotPhotos(spot);
 
       // 同じ設計者の作品（竣工年順）
